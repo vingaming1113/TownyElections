@@ -43,10 +43,10 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Towny -->
+        <!-- Towny (JitPack publishes the artifact with a lowercase 'towny' id) -->
         <dependency>
             <groupId>com.github.TownyAdvanced</groupId>
-            <artifactId>Towny</artifactId>
+            <artifactId>towny</artifactId>
             <version>${towny.version}</version>
             <scope>provided</scope>
         </dependency>
