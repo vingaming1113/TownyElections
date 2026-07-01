@@ -2,7 +2,6 @@ package com.townyelections.integration;
 
 import com.palmergames.bukkit.towny.TownyAPI;
 import com.palmergames.bukkit.towny.TownyUniverse;
-import com.palmergames.bukkit.towny.exceptions.TownyException;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.palmergames.bukkit.towny.permissions.TownyPerms;
@@ -141,7 +140,7 @@ public class TownyHook {
             town.setMayor(newMayor);
             town.save();
             return true;
-        } catch (TownyException ex) {
+        } catch (Throwable ex) {
             // Fall back to a forced assignment if the checked path refuses.
             try {
                 town.forceSetMayor(newMayor);
