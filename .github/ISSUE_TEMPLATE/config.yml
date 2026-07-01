@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / Support
+    url: https://github.com/vingaming1113/TownyElections/discussions
+    about: >
+      For usage questions and general help, please open a Discussion instead of
+      an issue.
+  - name: Towny API documentation
+    url: https://github.com/TownyAdvanced/Towny/wiki/TownyAPI
+    about: Reference for the Towny plugin this expansion depends on.

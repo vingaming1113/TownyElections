@@ -170,4 +170,4 @@ correctly across restarts.
 
 ## License
 
-Provided as-is. Adapt freely for your server.
+Licensed under the [MIT License](LICENSE). Adapt freely for your server.
