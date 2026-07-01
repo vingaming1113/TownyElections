@@ -43,9 +43,10 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Towny (JitPack publishes the artifact with a lowercase 'towny' id) -->
+        <!-- Towny: multi-module build on JitPack; the built submodule is
+             addressed as groupId com.github.TownyAdvanced.towny, artifactId towny -->
         <dependency>
-            <groupId>com.github.TownyAdvanced</groupId>
+            <groupId>com.github.TownyAdvanced.towny</groupId>
             <artifactId>towny</artifactId>
             <version>${towny.version}</version>
             <scope>provided</scope>
