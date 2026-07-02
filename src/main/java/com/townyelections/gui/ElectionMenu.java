@@ -11,6 +11,7 @@ import com.townyelections.manager.OperationResult;
 import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
+import com.townyelections.model.ElectionResult;
 import com.townyelections.util.DurationUtil;
 import com.townyelections.util.TextUtil;
 import net.kyori.adventure.text.Component;
@@ -19,9 +20,12 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
@@ -30,33 +34,35 @@ import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ElectionMenu implements Listener {
 
-    private static final int MAIN_SIZE = 27;
-    private static final int ROSTER_SIZE = 54;
-    private static final int MAIN_STATUS_SLOT = 4;
-    private static final int MAIN_CANDIDATES_SLOT = 11;
-    private static final int MAIN_RUN_SLOT = 13;
-    private static final int MAIN_WITHDRAW_SLOT = 15;
-    private static final int ROSTER_BACK_SLOT = 45;
-    private static final int ROSTER_PREVIOUS_SLOT = 48;
-    private static final int ROSTER_NEXT_SLOT = 50;
-    private static final List<Integer> CANDIDATE_SLOTS = List.of(
+    private static final int MAIN_SIZE = 54;
+    private static final int PAGE_SIZE = 54;
+    private static final int BACK_SLOT = 45;
+    private static final int PREVIOUS_SLOT = 48;
+    private static final int NEXT_SLOT = 50;
+    private static final int STATUS_SLOT = 4;
+    private static final List<Integer> CONTENT_SLOTS = List.of(
             10, 11, 12, 13, 14, 15, 16,
             19, 20, 21, 22, 23, 24, 25,
             28, 29, 30, 31, 32, 33, 34,
             37, 38, 39, 40, 41, 42, 43);
 
+    private final TownyElections plugin;
     private final ElectionManager elections;
     private final MessageManager messages;
     private final ConfigManager config;
     private final TownyHook towny;
+    private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
 
     public ElectionMenu(TownyElections plugin) {
+        this.plugin = plugin;
         this.elections = plugin.getElectionManager();
         this.messages = plugin.getMessageManager();
         this.config = plugin.getConfigManager();
@@ -64,29 +70,59 @@ public class ElectionMenu implements Listener {
     }
 
     public void openMain(Player player) {
+        openMain(player, 0);
+    }
+
+    private void openMain(Player player, int requestedPage) {
         PlayerContext ctx = resolveContext(player);
         if (ctx == null) {
             return;
         }
 
+        int maxPage = player.hasPermission("townyelections.admin") ? 2 : 1;
+        int page = Math.max(0, Math.min(requestedPage, maxPage));
         Election election = elections.getElection(ctx.town());
-        ElectionMenuHolder holder = new ElectionMenuHolder(ctx.town().getUUID(), 0);
+        Map<String, String> menuPlaceholders = placeholders(ctx.town(), election, ctx.resident());
+        menuPlaceholders.put("page", String.valueOf(page + 1));
+        menuPlaceholders.put("pages", String.valueOf(maxPage + 1));
+
+        ElectionMenuHolder holder = new ElectionMenuHolder(ElectionMenuView.MAIN, ctx.town().getUUID(), page);
         Inventory inventory = Bukkit.createInventory(holder, MAIN_SIZE,
-                messages.legacy("gui.main-title", placeholders(ctx.town(), election)));
+                messages.legacy("gui.main-title", menuPlaceholders));
         holder.setInventory(inventory);
-
         fillFrame(inventory);
-        inventory.setItem(MAIN_STATUS_SLOT, statusItem(ctx.town(), election, ctx.resident()));
-        holder.setAction(MAIN_CANDIDATES_SLOT, ElectionMenuAction.CANDIDATES);
-        inventory.setItem(MAIN_CANDIDATES_SLOT, icon(Material.PLAYER_HEAD,
-                "gui.main-candidates-name", "gui.main-candidates-lore", placeholders(ctx.town(), election)));
-        holder.setAction(MAIN_RUN_SLOT, ElectionMenuAction.RUN);
-        inventory.setItem(MAIN_RUN_SLOT, icon(Material.NAME_TAG,
-                "gui.main-run-name", "gui.main-run-lore", placeholders(ctx.town(), election)));
-        holder.setAction(MAIN_WITHDRAW_SLOT, ElectionMenuAction.WITHDRAW);
-        inventory.setItem(MAIN_WITHDRAW_SLOT, icon(Material.RED_BED,
-                "gui.main-withdraw-name", "gui.main-withdraw-lore", placeholders(ctx.town(), election)));
 
+        inventory.setItem(STATUS_SLOT, statusItem(ctx.town(), election, ctx.resident()));
+        if (page == 0) {
+            addAction(inventory, holder, 11, ElectionMenuAction.CANDIDATES, Material.PLAYER_HEAD,
+                    "gui.main-candidates-name", "gui.main-candidates-lore", menuPlaceholders);
+            addAction(inventory, holder, 13, ElectionMenuAction.STANDINGS, Material.OAK_SIGN,
+                    "gui.main-standings-name", "gui.main-standings-lore", menuPlaceholders);
+            addAction(inventory, holder, 15, ElectionMenuAction.RESULTS, Material.WRITABLE_BOOK,
+                    "gui.main-results-name", "gui.main-results-lore", menuPlaceholders);
+        } else if (page == 1) {
+            addAction(inventory, holder, 10, ElectionMenuAction.RUN, Material.NAME_TAG,
+                    "gui.main-run-name", "gui.main-run-lore", menuPlaceholders);
+            addAction(inventory, holder, 12, ElectionMenuAction.WITHDRAW, Material.RED_BED,
+                    "gui.main-withdraw-name", "gui.main-withdraw-lore", menuPlaceholders);
+            addAction(inventory, holder, 14, ElectionMenuAction.SET_CAMPAIGN, Material.PAPER,
+                    "gui.main-campaign-name", "gui.main-campaign-lore", menuPlaceholders);
+            addAction(inventory, holder, 16, ElectionMenuAction.SET_PARTY, Material.BLUE_BANNER,
+                    "gui.main-party-name", "gui.main-party-lore", menuPlaceholders);
+            addAction(inventory, holder, 22, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
+                    "gui.main-leave-party-name", "gui.main-leave-party-lore", menuPlaceholders);
+        } else {
+            addAction(inventory, holder, 10, ElectionMenuAction.ADMIN_START, Material.EMERALD_BLOCK,
+                    "gui.admin-start-name", "gui.admin-start-lore", menuPlaceholders);
+            addAction(inventory, holder, 12, ElectionMenuAction.ADMIN_STOP, Material.REDSTONE_BLOCK,
+                    "gui.admin-stop-name", "gui.admin-stop-lore", menuPlaceholders);
+            addAction(inventory, holder, 14, ElectionMenuAction.ADMIN_CANCEL, Material.BARRIER,
+                    "gui.admin-cancel-name", "gui.admin-cancel-lore", menuPlaceholders);
+            addAction(inventory, holder, 16, ElectionMenuAction.ADMIN_RELOAD, Material.COMPARATOR,
+                    "gui.admin-reload-name", "gui.admin-reload-lore", menuPlaceholders);
+        }
+
+        addMainPageButtons(inventory, holder, menuPlaceholders, page, maxPage);
         player.openInventory(inventory);
     }
 
@@ -95,56 +131,146 @@ public class ElectionMenu implements Listener {
     }
 
     private void openRoster(Player player, UUID townUuid, int requestedPage) {
-        PlayerContext ctx = resolveContext(player);
-        if (ctx == null || !ctx.town().getUUID().equals(townUuid)) {
-            player.closeInventory();
+        if (!player.hasPermission("townyelections.info") && !player.hasPermission("townyelections.vote")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
             return;
         }
 
         Election election = elections.getElection(ctx.town());
         List<Candidate> candidates = sortedCandidates(election);
-        int maxPage = Math.max(0, (candidates.size() - 1) / CANDIDATE_SLOTS.size());
+        int maxPage = Math.max(0, (candidates.size() - 1) / CONTENT_SLOTS.size());
         int page = Math.max(0, Math.min(requestedPage, maxPage));
-        Map<String, String> menuPlaceholders = placeholders(ctx.town(), election);
+        Map<String, String> menuPlaceholders = placeholders(ctx.town(), election, ctx.resident());
         menuPlaceholders.put("page", String.valueOf(page + 1));
         menuPlaceholders.put("pages", String.valueOf(maxPage + 1));
 
-        ElectionMenuHolder holder = new ElectionMenuHolder(townUuid, page);
-        Inventory inventory = Bukkit.createInventory(holder, ROSTER_SIZE,
+        ElectionMenuHolder holder = new ElectionMenuHolder(ElectionMenuView.ROSTER, townUuid, page);
+        Inventory inventory = Bukkit.createInventory(holder, PAGE_SIZE,
                 messages.legacy("gui.roster-title", menuPlaceholders));
         holder.setInventory(inventory);
         fillFrame(inventory);
-
-        holder.setAction(ROSTER_BACK_SLOT, ElectionMenuAction.BACK);
-        inventory.setItem(ROSTER_BACK_SLOT, icon(Material.ARROW,
-                "gui.back-name", "gui.back-lore", menuPlaceholders));
+        addBackButton(inventory, holder, menuPlaceholders);
 
         if (candidates.isEmpty()) {
             inventory.setItem(22, icon(Material.BARRIER,
                     "gui.no-candidates-name", "gui.no-candidates-lore", menuPlaceholders));
         } else {
             Map<UUID, Integer> tally = election.tally();
-            int start = page * CANDIDATE_SLOTS.size();
-            int end = Math.min(candidates.size(), start + CANDIDATE_SLOTS.size());
+            int start = page * CONTENT_SLOTS.size();
+            int end = Math.min(candidates.size(), start + CONTENT_SLOTS.size());
             for (int index = start; index < end; index++) {
                 Candidate candidate = candidates.get(index);
-                int slot = CANDIDATE_SLOTS.get(index - start);
+                int slot = CONTENT_SLOTS.get(index - start);
                 holder.setCandidate(slot, candidate.getUuid());
                 inventory.setItem(slot, candidateItem(candidate, election, tally, ctx.resident()));
             }
         }
 
-        if (page > 0) {
-            holder.setAction(ROSTER_PREVIOUS_SLOT, ElectionMenuAction.PREVIOUS_PAGE);
-            inventory.setItem(ROSTER_PREVIOUS_SLOT, icon(Material.LIME_DYE,
-                    "gui.previous-page-name", "gui.previous-page-lore", menuPlaceholders));
+        addPageButtons(inventory, holder, menuPlaceholders, page, maxPage);
+        player.openInventory(inventory);
+    }
+
+    private void openStandings(Player player, UUID townUuid) {
+        openStandings(player, townUuid, 0);
+    }
+
+    private void openStandings(Player player, UUID townUuid, int requestedPage) {
+        if (!player.hasPermission("townyelections.info")) {
+            messages.send(player, "general.no-permission");
+            return;
         }
-        if (page < maxPage) {
-            holder.setAction(ROSTER_NEXT_SLOT, ElectionMenuAction.NEXT_PAGE);
-            inventory.setItem(ROSTER_NEXT_SLOT, icon(Material.LIME_DYE,
-                    "gui.next-page-name", "gui.next-page-lore", menuPlaceholders));
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
+            return;
+        }
+        Election election = elections.getElection(ctx.town());
+        if (election == null) {
+            messages.send(player, "election.none-active");
+            openMain(player);
+            return;
         }
 
+        boolean showVotes = config.isPublicLiveResults() || election.getPhase() == ElectionPhase.CONCLUDED;
+        List<PartyEntry> parties = rankedParties(election, showVotes);
+        int maxPage = Math.max(0, (parties.size() - 1) / CONTENT_SLOTS.size());
+        int page = Math.max(0, Math.min(requestedPage, maxPage));
+        Map<String, String> menuPlaceholders = placeholders(ctx.town(), election, ctx.resident());
+        menuPlaceholders.put("page", String.valueOf(page + 1));
+        menuPlaceholders.put("pages", String.valueOf(maxPage + 1));
+
+        ElectionMenuHolder holder = new ElectionMenuHolder(ElectionMenuView.STANDINGS, townUuid, page);
+        Inventory inventory = Bukkit.createInventory(holder, PAGE_SIZE,
+                messages.legacy("gui.standings-title", menuPlaceholders));
+        holder.setInventory(inventory);
+        fillFrame(inventory);
+        addBackButton(inventory, holder, menuPlaceholders);
+
+        if (parties.isEmpty()) {
+            inventory.setItem(22, icon(Material.BARRIER,
+                    "gui.no-parties-name", "gui.no-parties-lore", menuPlaceholders));
+        } else {
+            int start = page * CONTENT_SLOTS.size();
+            int end = Math.min(parties.size(), start + CONTENT_SLOTS.size());
+            for (int index = start; index < end; index++) {
+                PartyEntry party = parties.get(index);
+                int slot = CONTENT_SLOTS.get(index - start);
+                inventory.setItem(slot, partyItem(party, showVotes));
+            }
+        }
+
+        addPageButtons(inventory, holder, menuPlaceholders, page, maxPage);
+        player.openInventory(inventory);
+    }
+
+    private void openResults(Player player, UUID townUuid) {
+        openResults(player, townUuid, 0);
+    }
+
+    private void openResults(Player player, UUID townUuid, int requestedPage) {
+        if (!player.hasPermission("townyelections.info")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
+            return;
+        }
+        ElectionResult result = elections.getLastResult(ctx.town().getUUID());
+        if (result == null) {
+            messages.send(player, "results.none-recorded");
+            openMain(player);
+            return;
+        }
+
+        List<ElectionResult.Standing> standings = result.getStandings();
+        int maxPage = Math.max(0, (standings.size() - 1) / CONTENT_SLOTS.size());
+        int page = Math.max(0, Math.min(requestedPage, maxPage));
+        Map<String, String> menuPlaceholders = resultPlaceholders(result, null, 0);
+        menuPlaceholders.put("page", String.valueOf(page + 1));
+        menuPlaceholders.put("pages", String.valueOf(maxPage + 1));
+
+        ElectionMenuHolder holder = new ElectionMenuHolder(ElectionMenuView.RESULTS, townUuid, page);
+        Inventory inventory = Bukkit.createInventory(holder, PAGE_SIZE,
+                messages.legacy("gui.results-title", menuPlaceholders));
+        holder.setInventory(inventory);
+        fillFrame(inventory);
+        addBackButton(inventory, holder, menuPlaceholders);
+        inventory.setItem(STATUS_SLOT, icon(Material.NETHER_STAR,
+                "gui.results-summary-name", "gui.results-summary-lore", menuPlaceholders));
+
+        int start = page * CONTENT_SLOTS.size();
+        int end = Math.min(standings.size(), start + CONTENT_SLOTS.size());
+        for (int index = start; index < end; index++) {
+            ElectionResult.Standing standing = standings.get(index);
+            int slot = CONTENT_SLOTS.get(index - start);
+            inventory.setItem(slot, resultStandingItem(standing, result, index + 1));
+        }
+
+        addPageButtons(inventory, holder, menuPlaceholders, page, maxPage);
         player.openInventory(inventory);
     }
 
@@ -175,11 +301,20 @@ public class ElectionMenu implements Listener {
 
         switch (action) {
             case CANDIDATES -> openRoster(player, holder.getTownUuid());
+            case STANDINGS -> openStandings(player, holder.getTownUuid());
+            case RESULTS -> openResults(player, holder.getTownUuid());
             case RUN -> handleRun(player, holder.getTownUuid());
             case WITHDRAW -> handleWithdraw(player, holder.getTownUuid());
+            case SET_CAMPAIGN -> beginTextInput(player, holder.getTownUuid(), PendingInputType.CAMPAIGN);
+            case SET_PARTY -> beginTextInput(player, holder.getTownUuid(), PendingInputType.PARTY);
+            case LEAVE_PARTY -> handleLeaveParty(player, holder.getTownUuid());
+            case ADMIN_START -> handleAdmin(player, holder.getTownUuid(), ElectionMenuAction.ADMIN_START);
+            case ADMIN_STOP -> handleAdmin(player, holder.getTownUuid(), ElectionMenuAction.ADMIN_STOP);
+            case ADMIN_CANCEL -> handleAdmin(player, holder.getTownUuid(), ElectionMenuAction.ADMIN_CANCEL);
+            case ADMIN_RELOAD -> handleReload(player, holder.getTownUuid());
             case BACK -> openMain(player);
-            case PREVIOUS_PAGE -> openRoster(player, holder.getTownUuid(), holder.getPage() - 1);
-            case NEXT_PAGE -> openRoster(player, holder.getTownUuid(), holder.getPage() + 1);
+            case PREVIOUS_PAGE -> openPreviousPage(player, holder);
+            case NEXT_PAGE -> openNextPage(player, holder);
         }
     }
 
@@ -197,20 +332,52 @@ public class ElectionMenu implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPendingChat(AsyncPlayerChatEvent event) {
+        PendingInput pending = pendingInputs.remove(event.getPlayer().getUniqueId());
+        if (pending == null) {
+            return;
+        }
+        event.setCancelled(true);
+        String input = event.getMessage();
+        Bukkit.getScheduler().runTask(plugin, () -> handlePendingInput(event.getPlayer(), pending, input));
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        pendingInputs.remove(event.getPlayer().getUniqueId());
+    }
+
+    private void openPreviousPage(Player player, ElectionMenuHolder holder) {
+        openPagedView(player, holder, holder.getPage() - 1);
+    }
+
+    private void openNextPage(Player player, ElectionMenuHolder holder) {
+        openPagedView(player, holder, holder.getPage() + 1);
+    }
+
+    private void openPagedView(Player player, ElectionMenuHolder holder, int page) {
+        switch (holder.getView()) {
+            case MAIN -> openMain(player, page);
+            case ROSTER -> openRoster(player, holder.getTownUuid(), page);
+            case STANDINGS -> openStandings(player, holder.getTownUuid(), page);
+            case RESULTS -> openResults(player, holder.getTownUuid(), page);
+        }
+    }
+
     private void handleRun(Player player, UUID townUuid) {
         if (!player.hasPermission("townyelections.candidate")) {
             messages.send(player, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(player);
-        if (ctx == null || !ctx.town().getUUID().equals(townUuid)) {
-            player.closeInventory();
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
             return;
         }
         respond(player, elections.registerCandidate(ctx.resident(), ctx.town()), MessageManager.placeholders(
                 "town", ctx.town().getName(),
                 "max", String.valueOf(config.getMaxCandidates())));
-        openMain(player);
+        openMain(player, 1);
     }
 
     private void handleWithdraw(Player player, UUID townUuid) {
@@ -218,14 +385,27 @@ public class ElectionMenu implements Listener {
             messages.send(player, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(player);
-        if (ctx == null || !ctx.town().getUUID().equals(townUuid)) {
-            player.closeInventory();
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
             return;
         }
         respond(player, elections.withdrawCandidate(ctx.resident(), ctx.town()),
                 MessageManager.placeholders("town", ctx.town().getName()));
-        openMain(player);
+        openMain(player, 1);
+    }
+
+    private void handleLeaveParty(Player player, UUID townUuid) {
+        if (!player.hasPermission("townyelections.candidate")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
+            return;
+        }
+        respond(player, elections.leaveParty(ctx.resident(), ctx.town()),
+                MessageManager.placeholders("party", config.getDefaultPartyName()));
+        openMain(player, 1);
     }
 
     private void handleCandidateClick(Player player, ElectionMenuHolder holder, UUID candidateUuid) {
@@ -233,9 +413,8 @@ public class ElectionMenu implements Listener {
             messages.send(player, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(player);
-        if (ctx == null || !ctx.town().getUUID().equals(holder.getTownUuid())) {
-            player.closeInventory();
+        PlayerContext ctx = resolveContextForTown(player, holder.getTownUuid());
+        if (ctx == null) {
             return;
         }
         OperationResult result = elections.castVote(ctx.resident(), ctx.town(), candidateUuid);
@@ -252,6 +431,81 @@ public class ElectionMenu implements Listener {
         }
     }
 
+    private void handleAdmin(Player player, UUID townUuid, ElectionMenuAction action) {
+        if (!player.hasPermission("townyelections.admin")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
+            return;
+        }
+        OperationResult result = switch (action) {
+            case ADMIN_START -> elections.startElection(ctx.town());
+            case ADMIN_STOP -> elections.stopElection(ctx.town());
+            case ADMIN_CANCEL -> elections.cancelElection(ctx.town());
+            default -> OperationResult.fail("general.unknown-command");
+        };
+        respond(player, result, MessageManager.placeholders(
+                "town", ctx.town().getName(),
+                "min", String.valueOf(config.getMinTownResidents())));
+        openMain(player, 2);
+    }
+
+    private void handleReload(Player player, UUID townUuid) {
+        if (!player.hasPermission("townyelections.admin")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        plugin.reloadAll();
+        messages.send(player, "general.reloaded");
+        openMain(player, 2);
+    }
+
+    private void beginTextInput(Player player, UUID townUuid, PendingInputType type) {
+        if (!player.hasPermission("townyelections.candidate")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, townUuid);
+        if (ctx == null) {
+            return;
+        }
+        Election election = elections.getElection(ctx.town());
+        if (election == null || election.getCandidate(ctx.resident().getUUID()) == null) {
+            messages.send(player, "candidate.not-a-candidate");
+            openMain(player, 1);
+            return;
+        }
+        pendingInputs.put(player.getUniqueId(), new PendingInput(type, townUuid));
+        player.closeInventory();
+        messages.send(player, type == PendingInputType.CAMPAIGN ? "gui.campaign-prompt" : "gui.party-prompt",
+                MessageManager.placeholders(
+                        "max_campaign", String.valueOf(config.getMaxMessageLength()),
+                        "max_party", String.valueOf(config.getMaxPartyNameLength())));
+    }
+
+    private void handlePendingInput(Player player, PendingInput pending, String input) {
+        if (input.equalsIgnoreCase("cancel")) {
+            messages.send(player, "gui.input-cancelled");
+            openMain(player, 1);
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, pending.townUuid());
+        if (ctx == null) {
+            return;
+        }
+        if (pending.type() == PendingInputType.CAMPAIGN) {
+            respond(player, elections.setCampaignMessage(ctx.resident(), ctx.town(), input),
+                    MessageManager.placeholders("max", String.valueOf(config.getMaxMessageLength())));
+        } else {
+            respond(player, elections.setPartyName(ctx.resident(), ctx.town(), input), MessageManager.placeholders(
+                    "party", input.trim(),
+                    "max", String.valueOf(config.getMaxPartyNameLength())));
+        }
+        openMain(player, 1);
+    }
+
     private PlayerContext resolveContext(Player player) {
         Resident resident = towny.getResident(player);
         if (resident == null) {
@@ -266,6 +520,20 @@ public class ElectionMenu implements Listener {
         return new PlayerContext(resident, town);
     }
 
+    private PlayerContext resolveContextForTown(Player player, UUID expectedTownUuid) {
+        PlayerContext ctx = resolveContext(player);
+        if (ctx == null) {
+            player.closeInventory();
+            return null;
+        }
+        if (!ctx.town().getUUID().equals(expectedTownUuid)) {
+            player.closeInventory();
+            messages.send(player, "general.no-town");
+            return null;
+        }
+        return ctx;
+    }
+
     private List<Candidate> sortedCandidates(Election election) {
         if (election == null) {
             return List.of();
@@ -273,6 +541,36 @@ public class ElectionMenu implements Listener {
         List<Candidate> candidates = new ArrayList<>(election.getCandidateList());
         candidates.sort(Comparator.comparing(Candidate::getName, String.CASE_INSENSITIVE_ORDER));
         return candidates;
+    }
+
+    private List<PartyEntry> rankedParties(Election election, boolean rankByVotes) {
+        Map<String, List<String>> partyCandidates = new LinkedHashMap<>();
+        Map<String, Integer> partyVotes = new LinkedHashMap<>();
+        Map<UUID, Integer> tally = election.tally();
+
+        for (Candidate candidate : election.getCandidateList()) {
+            String party = candidate.getPartyName();
+            if (party == null || party.isBlank()) {
+                party = config.getDefaultPartyName();
+            }
+            if (config.isHideDefaultPartyFromStandings()
+                    && party.equalsIgnoreCase(config.getDefaultPartyName())) {
+                continue;
+            }
+            partyCandidates.computeIfAbsent(party, ignored -> new ArrayList<>()).add(candidate.getName());
+            partyVotes.merge(party, tally.getOrDefault(candidate.getUuid(), 0), Integer::sum);
+        }
+
+        List<PartyEntry> parties = new ArrayList<>();
+        for (Map.Entry<String, List<String>> entry : partyCandidates.entrySet()) {
+            parties.add(new PartyEntry(entry.getKey(), partyVotes.getOrDefault(entry.getKey(), 0), entry.getValue()));
+        }
+        Comparator<PartyEntry> comparator = rankByVotes
+                ? Comparator.comparingInt(PartyEntry::votes).reversed()
+                        .thenComparing(PartyEntry::name, String.CASE_INSENSITIVE_ORDER)
+                : Comparator.comparing(PartyEntry::name, String.CASE_INSENSITIVE_ORDER);
+        parties.sort(comparator);
+        return parties;
     }
 
     private ItemStack candidateItem(Candidate candidate, Election election, Map<UUID, Integer> tally,
@@ -286,6 +584,29 @@ public class ElectionMenu implements Listener {
         }
         Map<String, String> placeholders = placeholders(election, candidate, tally, viewer);
         applyMeta(item, "gui.candidate-name", candidateLoreKey(election), placeholders);
+        return item;
+    }
+
+    private ItemStack partyItem(PartyEntry party, boolean showVotes) {
+        Map<String, String> placeholders = MessageManager.placeholders(
+                "party", party.name(),
+                "party_votes", String.valueOf(party.votes()),
+                "count", String.valueOf(party.candidates().size()),
+                "candidates", String.join(", ", party.candidates()));
+        return icon(Material.BLUE_BANNER, "gui.party-entry-name",
+                showVotes ? "gui.party-entry-lore-public" : "gui.party-entry-lore-hidden", placeholders);
+    }
+
+    private ItemStack resultStandingItem(ElectionResult.Standing standing, ElectionResult result, int rank) {
+        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
+        ItemMeta baseMeta = item.getItemMeta();
+        if (baseMeta instanceof SkullMeta skullMeta) {
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(standing.uuid);
+            skullMeta.setOwningPlayer(offlinePlayer);
+            item.setItemMeta(skullMeta);
+        }
+        applyMeta(item, "gui.result-candidate-name", "gui.result-candidate-lore",
+                resultPlaceholders(result, standing, rank));
         return item;
     }
 
@@ -306,6 +627,34 @@ public class ElectionMenu implements Listener {
         ItemStack item = new ItemStack(material);
         applyMeta(item, nameKey, loreKey, placeholders);
         return item;
+    }
+
+    private void addAction(Inventory inventory, ElectionMenuHolder holder, int slot, ElectionMenuAction action,
+                           Material material, String nameKey, String loreKey, Map<String, String> placeholders) {
+        holder.setAction(slot, action);
+        inventory.setItem(slot, icon(material, nameKey, loreKey, placeholders));
+    }
+
+    private void addBackButton(Inventory inventory, ElectionMenuHolder holder, Map<String, String> placeholders) {
+        addAction(inventory, holder, BACK_SLOT, ElectionMenuAction.BACK, Material.ARROW,
+                "gui.back-name", "gui.back-lore", placeholders);
+    }
+
+    private void addMainPageButtons(Inventory inventory, ElectionMenuHolder holder, Map<String, String> placeholders,
+                                    int page, int maxPage) {
+        if (page > 0) {
+            addAction(inventory, holder, PREVIOUS_SLOT, ElectionMenuAction.PREVIOUS_PAGE, Material.LIME_DYE,
+                    "gui.previous-page-name", "gui.previous-page-lore", placeholders);
+        }
+        if (page < maxPage) {
+            addAction(inventory, holder, NEXT_SLOT, ElectionMenuAction.NEXT_PAGE, Material.LIME_DYE,
+                    "gui.next-page-name", "gui.next-page-lore", placeholders);
+        }
+    }
+
+    private void addPageButtons(Inventory inventory, ElectionMenuHolder holder, Map<String, String> placeholders,
+                                int page, int maxPage) {
+        addMainPageButtons(inventory, holder, placeholders, page, maxPage);
     }
 
     private void applyMeta(ItemStack item, String nameKey, String loreKey, Map<String, String> placeholders) {
@@ -364,7 +713,11 @@ public class ElectionMenu implements Listener {
     }
 
     private Map<String, String> placeholders(Town town, Election election) {
-        return placeholders(election, null, election == null ? Map.of() : election.tally(), null, town);
+        return placeholders(town, election, null);
+    }
+
+    private Map<String, String> placeholders(Town town, Election election, Resident viewer) {
+        return placeholders(election, null, election == null ? Map.of() : election.tally(), viewer, town);
     }
 
     private Map<String, String> placeholders(Election election, Candidate candidate,
@@ -385,6 +738,9 @@ public class ElectionMenu implements Listener {
         String candidateName = candidate == null ? "-" : candidate.getName();
         String party = candidate == null ? "-" : candidate.getPartyName();
         int votes = candidate == null ? 0 : tally.getOrDefault(candidate.getUuid(), 0);
+        Candidate viewerCandidate = election == null || viewer == null ? null : election.getCandidate(viewer.getUUID());
+        String yourParty = viewerCandidate == null ? "-" : viewerCandidate.getPartyName();
+        String yourCampaign = viewerCandidate == null ? "-" : viewerCandidate.getCampaignMessage();
         String voted = messages.raw("gui.vote-none");
         if (election != null && viewer != null) {
             UUID choice = election.getVoteChoice(viewer.getUUID());
@@ -404,7 +760,35 @@ public class ElectionMenu implements Listener {
                 "party", party,
                 "candidate_votes", String.valueOf(votes),
                 "message", candidate == null ? "-" : candidate.getCampaignMessage(),
-                "your_vote", voted);
+                "your_vote", voted,
+                "your_party", yourParty,
+                "your_campaign", yourCampaign,
+                "default_party", config.getDefaultPartyName());
+    }
+
+    private Map<String, String> resultPlaceholders(ElectionResult result, ElectionResult.Standing standing, int rank) {
+        int total = Math.max(1, result.getTotalVotes());
+        int percent = standing == null ? 0 : (int) Math.round((standing.votes * 100.0) / total);
+        int residents = Math.max(1, result.getResidentCount());
+        int turnout = (int) Math.round((result.getTotalVotes() * 100.0) / residents);
+        String winnerParty = result.getStandings().stream()
+                .filter(entry -> result.getWinnerUuid() != null && entry.uuid.equals(result.getWinnerUuid()))
+                .map(entry -> entry.partyName)
+                .findFirst()
+                .orElse(config.getDefaultPartyName());
+        return MessageManager.placeholders(
+                "town", result.getTownName(),
+                "rank", String.valueOf(rank),
+                "candidate", standing == null ? "-" : standing.name,
+                "party", standing == null ? "-" : standing.partyName,
+                "candidate_votes", standing == null ? "0" : String.valueOf(standing.votes),
+                "percent", String.valueOf(percent),
+                "winner", result.hasWinner() ? result.getWinnerName() : messages.raw("results.no-winner"),
+                "winner_party", winnerParty,
+                "winner_votes", String.valueOf(result.getWinnerVotes()),
+                "total", String.valueOf(result.getTotalVotes()),
+                "residents", String.valueOf(result.getResidentCount()),
+                "turnout", String.valueOf(turnout));
     }
 
     private String candidateName(Town town, UUID candidateUuid) {
@@ -417,6 +801,17 @@ public class ElectionMenu implements Listener {
         messages.send(player, result.getMessageKey(), placeholders);
     }
 
+    private enum PendingInputType {
+        CAMPAIGN,
+        PARTY
+    }
+
+    private record PendingInput(PendingInputType type, UUID townUuid) {
+    }
+
     private record PlayerContext(Resident resident, Town town) {
+    }
+
+    private record PartyEntry(String name, int votes, List<String> candidates) {
     }
 }

@@ -100,13 +100,20 @@ Admins may target another town by name; otherwise the sender's own town is used.
 
 Running `/election` as a player opens the election desk for your town. The menu
 shows the current phase, remaining time, candidate count, vote count, your current
-vote, and quick actions to stand, withdraw, or open the candidate roster. The
-roster uses candidate player heads as vote buttons and still enforces the same
-permissions, Towny residency checks, voting phase checks, self-vote setting, and
-vote-change setting as `/election vote <candidate>`.
+vote, and paged access to the candidate ballot, party standings, last results,
+candidacy tools, and admin controls when the player has `townyelections.admin`.
 
-The GUI cancels menu clicks and drags inside its inventories so players cannot
-take, place, shift-click, or drag plugin menu items into their own inventory.
+The candidate roster uses player heads as vote buttons. Hovering a candidate head
+shows their party, campaign message, and visible vote data when live results are
+enabled. Campaign messages and party names can be set from the menu by clicking
+the matching item and typing the new value in chat; the plugin consumes that one
+chat message and applies the normal validation.
+
+The GUI still enforces the same permissions, Towny residency checks, voting phase
+checks, self-vote setting, vote-change setting, campaign limits, and party limits
+as the chat commands. Menu clicks and drags are cancelled inside plugin
+inventories so players cannot take, place, shift-click, or drag GUI items into
+their own inventory.
 
 ### Political parties
 

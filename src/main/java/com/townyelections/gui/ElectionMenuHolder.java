@@ -10,15 +10,21 @@ import java.util.UUID;
 
 class ElectionMenuHolder implements InventoryHolder {
 
+    private final ElectionMenuView view;
     private final UUID townUuid;
     private final int page;
     private final Map<Integer, ElectionMenuAction> actions = new HashMap<>();
     private final Map<Integer, UUID> candidates = new HashMap<>();
     private Inventory inventory;
 
-    ElectionMenuHolder(UUID townUuid, int page) {
+    ElectionMenuHolder(ElectionMenuView view, UUID townUuid, int page) {
+        this.view = view;
         this.townUuid = townUuid;
         this.page = page;
+    }
+
+    ElectionMenuView getView() {
+        return view;
     }
 
     UUID getTownUuid() {
