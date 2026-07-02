@@ -19,8 +19,10 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 ## Features
 
 - **Structured election lifecycle** — Nomination → Voting → (optional Runoff) → Concluded.
-- **Candidacy** — residents register with `/election run`, set a custom campaign
-  message shown to voters, and choose a political party label.
+- **Candidacy** — residents register with `/election run` and set a custom campaign
+  message shown to voters.
+- **Political parties** — candidates can choose a configurable party label shown
+  in candidate lists, final results, and PlaceholderAPI output.
 - **Voting** — one command to cast (and optionally change) a vote, with eligibility
   restricted to town residents. Supports secret ballots (hidden tallies).
 - **Automatic winner rewards** — grants configurable Towny **town ranks**, optionally
