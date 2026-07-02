@@ -2,12 +2,17 @@ package com.townyelections.integration;
 
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
+import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionResult;
 import com.townyelections.util.DurationUtil;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * PlaceholderAPI expansion exposing election information for a player's town.
@@ -19,6 +24,8 @@ import org.jetbrains.annotations.NotNull;
  *   <li>%townyelections_candidates% - number of candidates</li>
  *   <li>%townyelections_votes% - number of votes cast</li>
  *   <li>%townyelections_has_voted% - true/false whether the player voted</li>
+ *   <li>%townyelections_my_party% - party of the viewing player, if they are a candidate</li>
+ *   <li>%townyelections_leading_party% - leading party in the current town election</li>
  *   <li>%townyelections_last_winner% - name of the last winner in their town</li>
  *   <li>%townyelections_last_winner_party% - party of the last winner in their town</li>
  * </ul>
@@ -73,6 +80,15 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
                 return election == null ? "0" : String.valueOf(election.getTotalVotes());
             case "has_voted":
                 return (election != null && election.hasVoted(player.getUniqueId())) ? "true" : "false";
+            case "my_party": {
+                if (election == null) {
+                    return "";
+                }
+                Candidate candidate = election.getCandidate(player.getUniqueId());
+                return candidate == null ? "" : candidate.getPartyName();
+            }
+            case "leading_party":
+                return election == null ? "" : leadingParty(election);
             case "last_winner": {
                 ElectionResult result = getLastResult(town);
                 return result == null || !result.hasWinner() ? "" : result.getWinnerName();
@@ -91,6 +107,28 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
             default:
                 return null;
         }
+    }
+
+    private String leadingParty(Election election) {
+        Map<String, Integer> partyScores = new HashMap<>();
+        Map<UUID, Integer> tally = election.tally();
+        boolean rankByVotes = plugin.getConfigManager().isPublicLiveResults();
+
+        for (Candidate candidate : election.getCandidateList()) {
+            String party = candidate.getPartyName();
+            if (party == null || party.isBlank()) {
+                party = plugin.getConfigManager().getDefaultPartyName();
+            }
+            int score = rankByVotes ? tally.getOrDefault(candidate.getUuid(), 0) : 1;
+            partyScores.merge(party, score, Integer::sum);
+        }
+
+        return partyScores.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER)))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse("");
     }
 
     private ElectionResult getLastResult(Town town) {

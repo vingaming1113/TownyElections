@@ -166,6 +166,8 @@ If PlaceholderAPI is installed, these placeholders are available (identifier
 | `%townyelections_candidates%`       | Number of candidates.                |
 | `%townyelections_votes%`            | Number of votes cast.                |
 | `%townyelections_has_voted%`        | `true`/`false` for the player.       |
+| `%townyelections_my_party%`         | Your candidate party, if running.     |
+| `%townyelections_leading_party%`    | Leading current-election party.       |
 | `%townyelections_last_winner%`      | Name of the last winner in the town. |
 | `%townyelections_last_winner_party%`| Party of the last winner in the town. |
 
