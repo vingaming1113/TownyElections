@@ -70,59 +70,48 @@ public class ElectionMenu implements Listener {
     }
 
     public void openMain(Player player) {
-        openMain(player, 0);
-    }
-
-    private void openMain(Player player, int requestedPage) {
         PlayerContext ctx = resolveContext(player);
         if (ctx == null) {
             return;
         }
 
-        int maxPage = player.hasPermission("townyelections.admin") ? 2 : 1;
-        int page = Math.max(0, Math.min(requestedPage, maxPage));
         Election election = elections.getElection(ctx.town());
         Map<String, String> menuPlaceholders = placeholders(ctx.town(), election, ctx.resident());
-        menuPlaceholders.put("page", String.valueOf(page + 1));
-        menuPlaceholders.put("pages", String.valueOf(maxPage + 1));
-
-        ElectionMenuHolder holder = new ElectionMenuHolder(ElectionMenuView.MAIN, ctx.town().getUUID(), page);
+        ElectionMenuHolder holder = new ElectionMenuHolder(ElectionMenuView.MAIN, ctx.town().getUUID(), 0);
         Inventory inventory = Bukkit.createInventory(holder, MAIN_SIZE,
                 messages.legacy("gui.main-title", menuPlaceholders));
         holder.setInventory(inventory);
         fillFrame(inventory);
 
         inventory.setItem(STATUS_SLOT, statusItem(ctx.town(), election, ctx.resident()));
-        if (page == 0) {
-            addAction(inventory, holder, 11, ElectionMenuAction.CANDIDATES, Material.PLAYER_HEAD,
-                    "gui.main-candidates-name", "gui.main-candidates-lore", menuPlaceholders);
-            addAction(inventory, holder, 13, ElectionMenuAction.STANDINGS, Material.OAK_SIGN,
-                    "gui.main-standings-name", "gui.main-standings-lore", menuPlaceholders);
-            addAction(inventory, holder, 15, ElectionMenuAction.RESULTS, Material.WRITABLE_BOOK,
-                    "gui.main-results-name", "gui.main-results-lore", menuPlaceholders);
-        } else if (page == 1) {
-            addAction(inventory, holder, 10, ElectionMenuAction.RUN, Material.NAME_TAG,
-                    "gui.main-run-name", "gui.main-run-lore", menuPlaceholders);
-            addAction(inventory, holder, 12, ElectionMenuAction.WITHDRAW, Material.RED_BED,
-                    "gui.main-withdraw-name", "gui.main-withdraw-lore", menuPlaceholders);
-            addAction(inventory, holder, 14, ElectionMenuAction.SET_CAMPAIGN, Material.PAPER,
-                    "gui.main-campaign-name", "gui.main-campaign-lore", menuPlaceholders);
-            addAction(inventory, holder, 16, ElectionMenuAction.SET_PARTY, Material.BLUE_BANNER,
-                    "gui.main-party-name", "gui.main-party-lore", menuPlaceholders);
-            addAction(inventory, holder, 22, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
-                    "gui.main-leave-party-name", "gui.main-leave-party-lore", menuPlaceholders);
-        } else {
-            addAction(inventory, holder, 10, ElectionMenuAction.ADMIN_START, Material.EMERALD_BLOCK,
+        addAction(inventory, holder, 10, ElectionMenuAction.CANDIDATES, Material.PLAYER_HEAD,
+                "gui.main-candidates-name", "gui.main-candidates-lore", menuPlaceholders);
+        addAction(inventory, holder, 12, ElectionMenuAction.STANDINGS, Material.OAK_SIGN,
+                "gui.main-standings-name", "gui.main-standings-lore", menuPlaceholders);
+        addAction(inventory, holder, 14, ElectionMenuAction.RESULTS, Material.WRITABLE_BOOK,
+                "gui.main-results-name", "gui.main-results-lore", menuPlaceholders);
+        addAction(inventory, holder, 16, ElectionMenuAction.RUN, Material.NAME_TAG,
+                "gui.main-run-name", "gui.main-run-lore", menuPlaceholders);
+        addAction(inventory, holder, 20, ElectionMenuAction.WITHDRAW, Material.RED_BED,
+                "gui.main-withdraw-name", "gui.main-withdraw-lore", menuPlaceholders);
+        addAction(inventory, holder, 22, ElectionMenuAction.SET_CAMPAIGN, Material.PAPER,
+                "gui.main-campaign-name", "gui.main-campaign-lore", menuPlaceholders);
+        addAction(inventory, holder, 24, ElectionMenuAction.SET_PARTY, Material.BLUE_BANNER,
+                "gui.main-party-name", "gui.main-party-lore", menuPlaceholders);
+        addAction(inventory, holder, 30, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
+                "gui.main-leave-party-name", "gui.main-leave-party-lore", menuPlaceholders);
+
+        if (player.hasPermission("townyelections.admin")) {
+            addAction(inventory, holder, 37, ElectionMenuAction.ADMIN_START, Material.EMERALD_BLOCK,
                     "gui.admin-start-name", "gui.admin-start-lore", menuPlaceholders);
-            addAction(inventory, holder, 12, ElectionMenuAction.ADMIN_STOP, Material.REDSTONE_BLOCK,
+            addAction(inventory, holder, 39, ElectionMenuAction.ADMIN_STOP, Material.REDSTONE_BLOCK,
                     "gui.admin-stop-name", "gui.admin-stop-lore", menuPlaceholders);
-            addAction(inventory, holder, 14, ElectionMenuAction.ADMIN_CANCEL, Material.BARRIER,
+            addAction(inventory, holder, 41, ElectionMenuAction.ADMIN_CANCEL, Material.BARRIER,
                     "gui.admin-cancel-name", "gui.admin-cancel-lore", menuPlaceholders);
-            addAction(inventory, holder, 16, ElectionMenuAction.ADMIN_RELOAD, Material.COMPARATOR,
+            addAction(inventory, holder, 43, ElectionMenuAction.ADMIN_RELOAD, Material.COMPARATOR,
                     "gui.admin-reload-name", "gui.admin-reload-lore", menuPlaceholders);
         }
 
-        addMainPageButtons(inventory, holder, menuPlaceholders, page, maxPage);
         player.openInventory(inventory);
     }
 
@@ -358,7 +347,7 @@ public class ElectionMenu implements Listener {
 
     private void openPagedView(Player player, ElectionMenuHolder holder, int page) {
         switch (holder.getView()) {
-            case MAIN -> openMain(player, page);
+            case MAIN -> openMain(player);
             case ROSTER -> openRoster(player, holder.getTownUuid(), page);
             case STANDINGS -> openStandings(player, holder.getTownUuid(), page);
             case RESULTS -> openResults(player, holder.getTownUuid(), page);
@@ -377,7 +366,7 @@ public class ElectionMenu implements Listener {
         respond(player, elections.registerCandidate(ctx.resident(), ctx.town()), MessageManager.placeholders(
                 "town", ctx.town().getName(),
                 "max", String.valueOf(config.getMaxCandidates())));
-        openMain(player, 1);
+        openMain(player);
     }
 
     private void handleWithdraw(Player player, UUID townUuid) {
@@ -391,7 +380,7 @@ public class ElectionMenu implements Listener {
         }
         respond(player, elections.withdrawCandidate(ctx.resident(), ctx.town()),
                 MessageManager.placeholders("town", ctx.town().getName()));
-        openMain(player, 1);
+        openMain(player);
     }
 
     private void handleLeaveParty(Player player, UUID townUuid) {
@@ -405,7 +394,7 @@ public class ElectionMenu implements Listener {
         }
         respond(player, elections.leaveParty(ctx.resident(), ctx.town()),
                 MessageManager.placeholders("party", config.getDefaultPartyName()));
-        openMain(player, 1);
+        openMain(player);
     }
 
     private void handleCandidateClick(Player player, ElectionMenuHolder holder, UUID candidateUuid) {
@@ -449,7 +438,7 @@ public class ElectionMenu implements Listener {
         respond(player, result, MessageManager.placeholders(
                 "town", ctx.town().getName(),
                 "min", String.valueOf(config.getMinTownResidents())));
-        openMain(player, 2);
+        openMain(player);
     }
 
     private void handleReload(Player player, UUID townUuid) {
@@ -459,7 +448,7 @@ public class ElectionMenu implements Listener {
         }
         plugin.reloadAll();
         messages.send(player, "general.reloaded");
-        openMain(player, 2);
+        openMain(player);
     }
 
     private void beginTextInput(Player player, UUID townUuid, PendingInputType type) {
@@ -474,7 +463,7 @@ public class ElectionMenu implements Listener {
         Election election = elections.getElection(ctx.town());
         if (election == null || election.getCandidate(ctx.resident().getUUID()) == null) {
             messages.send(player, "candidate.not-a-candidate");
-            openMain(player, 1);
+            openMain(player);
             return;
         }
         pendingInputs.put(player.getUniqueId(), new PendingInput(type, townUuid));
@@ -488,7 +477,7 @@ public class ElectionMenu implements Listener {
     private void handlePendingInput(Player player, PendingInput pending, String input) {
         if (input.equalsIgnoreCase("cancel")) {
             messages.send(player, "gui.input-cancelled");
-            openMain(player, 1);
+            openMain(player);
             return;
         }
         PlayerContext ctx = resolveContextForTown(player, pending.townUuid());
@@ -503,7 +492,7 @@ public class ElectionMenu implements Listener {
                     "party", input.trim(),
                     "max", String.valueOf(config.getMaxPartyNameLength())));
         }
-        openMain(player, 1);
+        openMain(player);
     }
 
     private PlayerContext resolveContext(Player player) {

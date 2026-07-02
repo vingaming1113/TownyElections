@@ -100,7 +100,7 @@ Admins may target another town by name; otherwise the sender's own town is used.
 
 Running `/election` as a player opens the election desk for your town. The menu
 shows the current phase, remaining time, candidate count, vote count, your current
-vote, and paged access to the candidate ballot, party standings, last results,
+vote, and one-page access to the candidate ballot, party standings, last results,
 candidacy tools, and admin controls when the player has `townyelections.admin`.
 
 The candidate roster uses player heads as vote buttons. Hovering a candidate head

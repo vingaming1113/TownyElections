@@ -80,7 +80,7 @@ vote:
 
 
 gui:
-  main-title: "&1Election Desk &8- &f{town} &7({page}/{pages})"
+  main-title: "&1Election Desk &8- &f{town}"
   roster-title: "&1Candidate Roster &8- &f{town} &7({page}/{pages})"
   standings-title: "&1Party Standings &8- &f{town} &7({page}/{pages})"
   results-title: "&1Election Results &8- &f{town} &7({page}/{pages})"
