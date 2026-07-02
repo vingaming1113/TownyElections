@@ -91,7 +91,8 @@ campaign:
   max-message-length: 128
   # Default campaign message used when a candidate sets none.
   default-message: "I would be honored to serve this town."
-  # Maximum length (characters) of a candidate party name.
+  # Maximum length (characters) of a party name typed with /election party.
+  # This protects chat output and tab completion from very long labels.
   max-party-name-length: 32
   # Default party shown until a candidate chooses one.
   # This is what players return to when they use /election party leave.
@@ -100,7 +101,8 @@ campaign:
   # result summaries. Candidates still keep the label in candidate lists.
   hide-default-party-from-standings: false
   # Maximum number of non-default parties that may exist in one active election.
-  # 0 = unlimited. Players may always join an existing party or leave to default.
+  # 0 = unlimited. This only limits creating brand-new party labels; players
+  # may always join a party that already exists or leave back to the default.
   max-parties: 0
   # A simple denylist. Campaign messages containing any of these (case
   # insensitive) substrings are rejected.
@@ -145,12 +147,14 @@ winner:
 #  Command customization
 # ----------------------------------------------------------------------------
 # Rename the sub-commands of /election to whatever suits your server. The keys
-# are the internal actions; the values are the literals players type.
+# are internal action names; the values are what players type in chat.
+# Example: set parties: "blocs" to make /election blocs list party standings.
+# Keep each literal unique so commands can be resolved unambiguously.
 commands:
   run: "run"          # register as a candidate
   withdraw: "withdraw"  # drop out of the race
   campaign: "campaign"  # set your campaign message
-  party: "party"        # join or create your political party
+  party: "party"        # join, create, leave, or admin-rename a party
   parties: "parties"  # list current party standings
   vote: "vote"          # cast a vote
   status: "status"      # view current election status
