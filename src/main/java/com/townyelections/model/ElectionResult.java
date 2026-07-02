@@ -18,12 +18,18 @@ public class ElectionResult {
     public static final class Standing {
         public final UUID uuid;
         public final String name;
+        public final String partyName;
         public final int votes;
 
-        public Standing(UUID uuid, String name, int votes) {
+        public Standing(UUID uuid, String name, String partyName, int votes) {
             this.uuid = uuid;
             this.name = name;
+            this.partyName = partyName;
             this.votes = votes;
+        }
+
+        public Standing(UUID uuid, String name, int votes) {
+            this(uuid, name, "Independent", votes);
         }
     }
 
@@ -109,6 +115,7 @@ public class ElectionResult {
             ConfigurationSection s = standingsSection.createSection("s" + (i++));
             s.set("uuid", standing.uuid.toString());
             s.set("name", standing.name);
+            s.set("party-name", standing.partyName);
             s.set("votes", standing.votes);
         }
     }
@@ -157,7 +164,8 @@ public class ElectionResult {
                 }
                 try {
                     UUID uuid = UUID.fromString(s.getString("uuid", ""));
-                    standings.add(new Standing(uuid, s.getString("name", "Unknown"), s.getInt("votes", 0)));
+                    standings.add(new Standing(uuid, s.getString("name", "Unknown"),
+                            s.getString("party-name", "Independent"), s.getInt("votes", 0)));
                 } catch (IllegalArgumentException ignored) {
                     // skip
                 }

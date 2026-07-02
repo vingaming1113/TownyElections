@@ -20,6 +20,7 @@ import org.jetbrains.annotations.NotNull;
  *   <li>%townyelections_votes% - number of votes cast</li>
  *   <li>%townyelections_has_voted% - true/false whether the player voted</li>
  *   <li>%townyelections_last_winner% - name of the last winner in their town</li>
+ *   <li>%townyelections_last_winner_party% - party of the last winner in their town</li>
  * </ul>
  */
 public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
@@ -73,17 +74,26 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
             case "has_voted":
                 return (election != null && election.hasVoted(player.getUniqueId())) ? "true" : "false";
             case "last_winner": {
-                if (town == null) {
-                    return "";
-                }
-                ElectionResult result = plugin.getElectionManager().getLastResult(town.getUUID());
+                ElectionResult result = getLastResult(town);
+                return result == null || !result.hasWinner() ? "" : result.getWinnerName();
+            }
+            case "last_winner_party": {
+                ElectionResult result = getLastResult(town);
                 if (result == null || !result.hasWinner()) {
                     return "";
                 }
-                return result.getWinnerName();
+                return result.getStandings().stream()
+                        .filter(standing -> standing.uuid.equals(result.getWinnerUuid()))
+                        .map(standing -> standing.partyName)
+                        .findFirst()
+                        .orElse(plugin.getConfigManager().getDefaultPartyName());
             }
             default:
                 return null;
         }
+    }
+
+    private ElectionResult getLastResult(Town town) {
+        return town == null ? null : plugin.getElectionManager().getLastResult(town.getUUID());
     }
 }

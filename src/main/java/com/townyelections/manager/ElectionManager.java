@@ -100,7 +100,7 @@ public class ElectionManager {
         }
 
         Candidate candidate = new Candidate(resident.getUUID(), resident.getName(),
-                config.getDefaultCampaignMessage());
+                config.getDefaultCampaignMessage(), config.getDefaultPartyName(), System.currentTimeMillis());
         election.addCandidate(candidate);
         save();
 
@@ -148,6 +148,27 @@ public class ElectionManager {
         candidate.setCampaignMessage(message);
         save();
         return OperationResult.ok("campaign.set");
+    }
+
+    public OperationResult setPartyName(Resident resident, Town town, String partyName) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        Candidate candidate = election.getCandidate(resident.getUUID());
+        if (candidate == null) {
+            return OperationResult.fail("candidate.not-a-candidate");
+        }
+        if (partyName == null || partyName.isBlank()) {
+            return OperationResult.fail("party.empty");
+        }
+        String trimmed = partyName.trim();
+        if (trimmed.length() > config.getMaxPartyNameLength()) {
+            return OperationResult.fail("party.too-long");
+        }
+        candidate.setPartyName(trimmed);
+        save();
+        return OperationResult.ok("party.set");
     }
 
     // ========================================================================
@@ -424,7 +445,7 @@ public class ElectionManager {
         for (UUID id : ranked) {
             Candidate c = election.getCandidate(id);
             if (c != null) {
-                standings.add(new ElectionResult.Standing(id, c.getName(), tally.getOrDefault(id, 0)));
+                standings.add(new ElectionResult.Standing(id, c.getName(), c.getPartyName(), tally.getOrDefault(id, 0)));
             }
         }
 
@@ -467,6 +488,8 @@ public class ElectionManager {
             runConfiguredCommands(config.getCommandsOnLoss(), MessageManager.placeholders(
                     "loser", c.getName(),
                     "loser_uuid", c.getUuid().toString(),
+                    "party", c.getPartyName(),
+                    "loser_party", c.getPartyName(),
                     "town", town.getName(),
                     "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0))));
         }
@@ -505,6 +528,8 @@ public class ElectionManager {
         runConfiguredCommands(config.getCommandsOnWin(), MessageManager.placeholders(
                 "winner", winner.getName(),
                 "winner_uuid", winner.getUuid().toString(),
+                "party", winner.getPartyName(),
+                "winner_party", winner.getPartyName(),
                 "town", town.getName(),
                 "votes", String.valueOf(winnerVotes),
                 "total_votes", String.valueOf(totalVotes)));

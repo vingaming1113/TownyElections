@@ -42,6 +42,8 @@ public class ConfigManager {
     // campaign
     private int maxMessageLength;
     private String defaultCampaignMessage;
+    private int maxPartyNameLength;
+    private String defaultPartyName;
     private List<String> blockedWords;
 
     // winner
@@ -88,6 +90,8 @@ public class ConfigManager {
 
         maxMessageLength = Math.max(1, c.getInt("campaign.max-message-length", 128));
         defaultCampaignMessage = c.getString("campaign.default-message", "I would be honored to serve this town.");
+        maxPartyNameLength = Math.max(1, c.getInt("campaign.max-party-name-length", 32));
+        defaultPartyName = c.getString("campaign.default-party-name", "Independent");
         blockedWords = c.getStringList("campaign.blocked-words");
 
         setAsMayor = c.getBoolean("winner.set-as-mayor", false);
@@ -134,6 +138,8 @@ public class ConfigManager {
 
     public int getMaxMessageLength() { return maxMessageLength; }
     public String getDefaultCampaignMessage() { return defaultCampaignMessage; }
+    public int getMaxPartyNameLength() { return maxPartyNameLength; }
+    public String getDefaultPartyName() { return defaultPartyName; }
     public List<String> getBlockedWords() { return blockedWords; }
 
     public boolean isSetAsMayor() { return setAsMayor; }

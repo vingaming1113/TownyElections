@@ -19,8 +19,8 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 ## Features
 
 - **Structured election lifecycle** — Nomination → Voting → (optional Runoff) → Concluded.
-- **Candidacy** — residents register with `/election run` and set a custom campaign
-  message shown to voters.
+- **Candidacy** — residents register with `/election run`, set a custom campaign
+  message shown to voters, and choose a political party label.
 - **Voting** — one command to cast (and optionally change) a vote, with eligibility
   restricted to town residents. Supports secret ballots (hidden tallies).
 - **Automatic winner rewards** — grants configurable Towny **town ranks**, optionally
@@ -59,7 +59,7 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 mvn clean package
 ```
 
-The shaded jar is produced at `target/TownyElections-1.0.0.jar`. Drop it into
+The shaded jar is produced at `target/TownyElections-1.0.2.jar`. Drop it into
 your server's `plugins/` folder alongside Towny.
 
 > The build depends on the Paper API, Towny (via JitPack), and PlaceholderAPI
@@ -77,9 +77,10 @@ literal below is **configurable** in `config.yml` under the `commands:` section.
 | `/election run`                 | `townyelections.candidate`| Stand as a candidate.                |
 | `/election withdraw`            | `townyelections.candidate`| Withdraw from the race.              |
 | `/election campaign <message>`  | `townyelections.candidate`| Set your campaign message.           |
+| `/election party <name>`       | `townyelections.candidate`| Set your political party.            |
 | `/election vote <candidate>`    | `townyelections.vote`     | Cast (or change) your vote.          |
 | `/election status`              | `townyelections.info`     | View the current election.           |
-| `/election candidates`          | `townyelections.info`     | List candidates & campaign messages. |
+| `/election candidates`          | `townyelections.info`     | List candidates, parties & campaigns. |
 | `/election results`             | `townyelections.info`     | View the last concluded results.     |
 | `/election start [town]`        | `townyelections.admin`    | Start an election.                   |
 | `/election stop [town]`         | `townyelections.admin`    | End voting early and tally.          |
@@ -120,14 +121,14 @@ winner:
 Ranks map to Towny permission nodes defined in **`townyperms.yml`** (this is where
 plot-management and other role permissions live). Invalid ranks are skipped with a
 console warning. Command placeholders: `{winner}`, `{winner_uuid}`, `{town}`,
-`{votes}`, `{total_votes}` (and `{loser}`, `{loser_uuid}` for loss commands).
+`{votes}`, `{total_votes}`, `{winner_party}` (and `{loser}`, `{loser_uuid}`, `{loser_party}` for loss commands).
 
 ---
 
 ## Configuration highlights
 
 Durations accept friendly strings like `30s`, `10m`, `2h`, `3d`, `1w`, or
-combinations such as `1w3d12h`.
+combinations such as `1w3d12h`. Candidates can set a party with `/election party <name>`; party labels are shown in candidate lists, results, and winner command placeholders.
 
 ```yaml
 election:
@@ -162,13 +163,14 @@ If PlaceholderAPI is installed, these placeholders are available (identifier
 | `%townyelections_votes%`            | Number of votes cast.                |
 | `%townyelections_has_voted%`        | `true`/`false` for the player.       |
 | `%townyelections_last_winner%`      | Name of the last winner in the town. |
+| `%townyelections_last_winner_party%`| Party of the last winner in the town. |
 
 ---
 
 ## How it works
 
 1. An admin (or the auto-scheduler) starts an election in a town.
-2. **Nomination phase**: residents `/election run` and set campaign messages.
+2. **Nomination phase**: residents `/election run`, set campaign messages, and choose parties.
 3. When nominations end, if there are enough candidates the **voting phase** opens
    (otherwise the election is cancelled, or a lone candidate may auto-win).
 4. Residents `/election vote <candidate>`. A reminder is sent to non-voters before

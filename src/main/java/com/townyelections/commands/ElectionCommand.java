@@ -71,6 +71,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             case CommandConfig.RUN -> handleRun(sender);
             case CommandConfig.WITHDRAW -> handleWithdraw(sender);
             case CommandConfig.CAMPAIGN -> handleCampaign(sender, rest, label);
+            case CommandConfig.PARTY -> handleParty(sender, rest, label);
             case CommandConfig.VOTE -> handleVote(sender, rest, label);
             case CommandConfig.STATUS -> handleStatus(sender, label);
             case CommandConfig.CANDIDATES -> handleCandidates(sender, label);
@@ -155,6 +156,27 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         String message = String.join(" ", rest);
         respond(sender, elections.setCampaignMessage(ctx.resident(), ctx.town(), message),
                 MessageManager.placeholders("max", String.valueOf(config.getMaxMessageLength())));
+    }
+
+    private void handleParty(CommandSender sender, String[] rest, String label) {
+        if (!sender.hasPermission("townyelections.candidate")) {
+            messages.send(sender, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContext(sender);
+        if (ctx == null) {
+            return;
+        }
+        if (rest.length == 0) {
+            messages.send(sender, "party.empty", MessageManager.placeholders(
+                    "label", label, "party", commands.literal(CommandConfig.PARTY)));
+            return;
+        }
+        String partyName = String.join(" ", rest);
+        respond(sender, elections.setPartyName(ctx.resident(), ctx.town(), partyName),
+                MessageManager.placeholders(
+                        "party", partyName.trim(),
+                        "max", String.valueOf(config.getMaxPartyNameLength())));
     }
 
     // ---- Voting ------------------------------------------------------------
@@ -263,11 +285,13 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             if (showVotes) {
                 messages.sendNoPrefix(sender, "status.candidate-entry", MessageManager.placeholders(
                         "candidate", c.getName(),
+                        "party", c.getPartyName(),
                         "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0)),
                         "message", c.getCampaignMessage()));
             } else {
                 messages.sendNoPrefix(sender, "status.candidate-entry-hidden", MessageManager.placeholders(
                         "candidate", c.getName(),
+                        "party", c.getPartyName(),
                         "message", c.getCampaignMessage()));
             }
         }
@@ -298,13 +322,20 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.sendNoPrefix(sender, "results.line", MessageManager.placeholders(
                     "rank", String.valueOf(rank++),
                     "candidate", standing.name,
+                    "party", standing.partyName,
                     "votes", String.valueOf(standing.votes),
                     "percent", String.valueOf(percent)));
         }
 
         if (result.hasWinner()) {
+            String winnerParty = result.getStandings().stream()
+                    .filter(standing -> standing.uuid.equals(result.getWinnerUuid()))
+                    .map(standing -> standing.partyName)
+                    .findFirst()
+                    .orElse(config.getDefaultPartyName());
             messages.sendNoPrefix(sender, "results.winner", MessageManager.placeholders(
                     "winner", result.getWinnerName(),
+                    "party", winnerParty,
                     "votes", String.valueOf(result.getWinnerVotes())));
         } else {
             messages.sendNoPrefix(sender, "results.no-winner", null);
@@ -379,6 +410,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 "run", commands.literal(CommandConfig.RUN),
                 "withdraw", commands.literal(CommandConfig.WITHDRAW),
                 "campaign", commands.literal(CommandConfig.CAMPAIGN),
+                "party", commands.literal(CommandConfig.PARTY),
                 "vote", commands.literal(CommandConfig.VOTE),
                 "status", commands.literal(CommandConfig.STATUS),
                 "candidates", commands.literal(CommandConfig.CANDIDATES),
@@ -392,6 +424,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.sendNoPrefix(sender, "help.run", base);
         messages.sendNoPrefix(sender, "help.withdraw", base);
         messages.sendNoPrefix(sender, "help.campaign", base);
+        messages.sendNoPrefix(sender, "help.party", base);
         messages.sendNoPrefix(sender, "help.vote", base);
         messages.sendNoPrefix(sender, "help.status", base);
         messages.sendNoPrefix(sender, "help.candidates", base);

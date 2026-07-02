@@ -91,6 +91,10 @@ campaign:
   max-message-length: 128
   # Default campaign message used when a candidate sets none.
   default-message: "I would be honored to serve this town."
+  # Maximum length (characters) of a candidate party name.
+  max-party-name-length: 32
+  # Default party shown until a candidate chooses one.
+  default-party-name: "Independent"
   # A simple denylist. Campaign messages containing any of these (case
   # insensitive) substrings are rejected.
   blocked-words:
@@ -119,7 +123,7 @@ winner:
   revoke-previous-winner-ranks: true
 
   # Extra vanilla/Bukkit console commands to run when a winner is decided.
-  # Placeholders: {winner} {winner_uuid} {town} {votes} {total_votes}
+  # Placeholders: {winner} {winner_uuid} {winner_party} {party} {town} {votes} {total_votes}
   # Runs from console. Great for LuckPerms, broadcasts, giving items, etc.
   # Leave empty to run nothing. Examples (uncomment to use):
   #   - "lp user {winner} parent addtemp mayor 30d"
@@ -127,7 +131,7 @@ winner:
   commands-on-win: []
 
   # Commands run for each *losing* candidate when the election concludes.
-  # Placeholders: {loser} {loser_uuid} {town} {votes}
+  # Placeholders: {loser} {loser_uuid} {loser_party} {party} {town} {votes}
   commands-on-loss: []
 
 # ----------------------------------------------------------------------------
@@ -139,6 +143,7 @@ commands:
   run: "run"          # register as a candidate
   withdraw: "withdraw"  # drop out of the race
   campaign: "campaign"  # set your campaign message
+  party: "party"        # set your political party
   vote: "vote"          # cast a vote
   status: "status"      # view current election status
   candidates: "candidates"  # list candidates

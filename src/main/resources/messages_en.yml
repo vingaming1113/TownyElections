@@ -48,6 +48,11 @@ campaign:
   header: "&8&m----&r &bCampaign: &f{candidate} &8&m----"
   body: "&7{message}"
 
+party:
+  set: "&aYour political party has been set to &f{party}&a."
+  too-long: "&cYour political party name is too long (max &e{max}&c characters)."
+  empty: "&cUsage: &f/{label} {party} <name>"
+
 vote:
   cast: "&aYou voted for &f{candidate}&a."
   changed: "&aYou changed your vote to &f{candidate}&a."
@@ -61,8 +66,8 @@ vote:
 
 results:
   header: "&8&m-----&r &bElection Results &8- &f{town} &8&m-----"
-  line: "&7 {rank}. &f{candidate} &8- &e{votes}&7 vote(s) &8(&7{percent}%&8)"
-  winner: "&a&lWinner: &f{winner}&a with &e{votes}&a vote(s)!"
+  line: "&7 {rank}. &f{candidate} &8[{party}] &8- &e{votes}&7 vote(s) &8(&7{percent}%&8)"
+  winner: "&a&lWinner: &f{winner} &8[{party}]&a with &e{votes}&a vote(s)!"
   no-winner: "&cNo winner was declared."
   total-votes: "&7Total votes cast: &f{total}"
   turnout: "&7Turnout: &f{voters}&7/&f{residents} &7residents (&f{percent}%&7)"
@@ -83,8 +88,8 @@ status:
   your-vote: "&7Your vote: &f{choice}"
   your-vote-none: "&7Your vote: &8(none)"
   candidate-list-header: "&7Candidates (use &f/{label} {vote} <name>&7):"
-  candidate-entry: "&8 - &f{candidate} &8(&e{votes} votes&8) &7{message}"
-  candidate-entry-hidden: "&8 - &f{candidate} &7{message}"
+  candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message}"
+  candidate-entry-hidden: "&8 - &f{candidate} &8[{party}] &7{message}"
 
 admin:
   started: "&aYou started an election in &f{town}&a."
@@ -98,6 +103,7 @@ help:
   run: "&f/{label} {run} &8- &7Stand as a candidate."
   withdraw: "&f/{label} {withdraw} &8- &7Withdraw from the race."
   campaign: "&f/{label} {campaign} <message> &8- &7Set your campaign message."
+  party: "&f/{label} {party} <name> &8- &7Set your political party."
   vote: "&f/{label} {vote} <candidate> &8- &7Cast your vote."
   status: "&f/{label} {status} &8- &7View the current election."
   candidates: "&f/{label} {candidates} &8- &7List candidates."
