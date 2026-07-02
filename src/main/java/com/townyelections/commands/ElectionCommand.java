@@ -342,6 +342,10 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             if (party == null || party.isBlank()) {
                 party = config.getDefaultPartyName();
             }
+            if (config.isHideDefaultPartyFromStandings()
+                    && party.equalsIgnoreCase(config.getDefaultPartyName())) {
+                continue;
+            }
             partyCandidates.computeIfAbsent(party, ignored -> new ArrayList<>()).add(candidate.getName());
             partyVotes.merge(party, tally.getOrDefault(candidate.getUuid(), 0), Integer::sum);
         }
