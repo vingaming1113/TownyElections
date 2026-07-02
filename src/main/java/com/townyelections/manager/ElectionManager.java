@@ -207,8 +207,7 @@ public class ElectionManager {
                 "run", commands.literal(CommandConfig.RUN)));
         if (config.isBroadcastServerWide()) {
             Bukkit.broadcast(messages.prefixed(
-                    messages.raw("winner.announce-server").replace("{town}", town.getName())
-                            .replace("{winner}", "An election")));
+                    messages.raw("election.announce-server-start").replace("{town}", town.getName())));
         }
         return OperationResult.ok("admin.started");
     }

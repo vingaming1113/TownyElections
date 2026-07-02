@@ -121,11 +121,10 @@ winner:
   # Extra vanilla/Bukkit console commands to run when a winner is decided.
   # Placeholders: {winner} {winner_uuid} {town} {votes} {total_votes}
   # Runs from console. Great for LuckPerms, broadcasts, giving items, etc.
-  commands-on-win:
-    - "townyadmin reload"  # example placeholder - safe to remove
-  # Uncomment examples:
+  # Leave empty to run nothing. Examples (uncomment to use):
   #   - "lp user {winner} parent addtemp mayor 30d"
   #   - "give {winner} minecraft:golden_helmet 1"
+  commands-on-win: []
 
   # Commands run for each *losing* candidate when the election concludes.
   # Placeholders: {loser} {loser_uuid} {town} {votes}

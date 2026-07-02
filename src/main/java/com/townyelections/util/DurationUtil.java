@@ -23,21 +23,37 @@ public final class DurationUtil {
         if (input == null || input.isBlank()) {
             return fallbackMillis;
         }
-        Matcher matcher = TOKEN.matcher(input.trim());
+
+        String trimmed = input.trim();
+        if ("0".equals(trimmed)) {
+            return 0L;
+        }
+
+        Matcher matcher = TOKEN.matcher(trimmed);
         long total = 0L;
         boolean matched = false;
         while (matcher.find()) {
             matched = true;
-            long value = Long.parseLong(matcher.group(1));
+            long value;
+            try {
+                value = Long.parseLong(matcher.group(1));
+            } catch (NumberFormatException ex) {
+                return fallbackMillis;
+            }
             String unit = matcher.group(2).toLowerCase();
-            total += switch (unit) {
-                case "w" -> value * 7L * 24L * 60L * 60L * 1000L;
-                case "d" -> value * 24L * 60L * 60L * 1000L;
-                case "h" -> value * 60L * 60L * 1000L;
-                case "m" -> value * 60L * 1000L;
-                case "s" -> value * 1000L;
+            long multiplier = switch (unit) {
+                case "w" -> 7L * 24L * 60L * 60L * 1000L;
+                case "d" -> 24L * 60L * 60L * 1000L;
+                case "h" -> 60L * 60L * 1000L;
+                case "m" -> 60L * 1000L;
+                case "s" -> 1000L;
                 default -> 0L;
             };
+            try {
+                total = Math.addExact(total, Math.multiplyExact(value, multiplier));
+            } catch (ArithmeticException ex) {
+                return fallbackMillis;
+            }
         }
         return matched ? total : fallbackMillis;
     }

@@ -22,7 +22,7 @@ import org.bukkit.scheduler.BukkitTask;
  */
 public class TownyElections extends JavaPlugin {
 
-    private static final int BSTATS_PLUGIN_ID = 24000; // placeholder id
+    private static final int BSTATS_PLUGIN_ID = 32328; // placeholder id
 
     private ConfigManager configManager;
     private CommandConfig commandConfig;

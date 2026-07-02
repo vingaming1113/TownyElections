@@ -17,6 +17,7 @@ election:
   none-active: "&cThere is no active election in your town."
   already-active: "&cThere is already an active election in &f{town}&c."
   started-nomination: "&aAn election has begun in &f{town}&a! Nominations are open for &e{duration}&a. Use &f/{label} {run}&a to stand as a candidate."
+  announce-server-start: "&6&lElection!&e An election has begun in &f{town}&e."
   nominations-closed-voting-open: "&aNominations are closed. Voting is now open for &e{duration}&a in &f{town}&a. Use &f/{label} {vote} <candidate>&a."
   cancelled: "&cThe election in &f{town}&c has been cancelled. No winner was declared."
   cancelled-not-enough-candidates: "&cThe election in &f{town}&c was cancelled: only &e{count}&c candidate(s) registered (minimum &e{min}&c)."

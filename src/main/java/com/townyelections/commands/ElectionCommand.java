@@ -120,7 +120,9 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             return;
         }
         respond(sender, elections.registerCandidate(ctx.resident(), ctx.town()),
-                MessageManager.placeholders("town", ctx.town().getName()));
+                MessageManager.placeholders(
+                        "town", ctx.town().getName(),
+                        "max", String.valueOf(config.getMaxCandidates())));
     }
 
     private void handleWithdraw(CommandSender sender) {
@@ -171,8 +173,11 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                     "label", label, "vote", commands.literal(CommandConfig.VOTE)));
             return;
         }
-        OperationResult result = elections.castVote(ctx.resident(), ctx.town(), rest[0]);
-        Map<String, String> ph = MessageManager.placeholders("town", ctx.town().getName());
+        String candidateInput = String.join(" ", rest);
+        OperationResult result = elections.castVote(ctx.resident(), ctx.town(), candidateInput);
+        Map<String, String> ph = MessageManager.placeholders(
+                "town", ctx.town().getName(),
+                "name", candidateInput);
         if (result.isSuccess() && result.getPayload() instanceof String candidateName) {
             ph.put("candidate", candidateName);
         }
@@ -348,7 +353,9 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             case CommandConfig.CANCEL -> elections.cancelElection(town);
             default -> OperationResult.fail("general.unknown-command");
         };
-        respond(sender, result, MessageManager.placeholders("town", town.getName()));
+        respond(sender, result, MessageManager.placeholders(
+                "town", town.getName(),
+                "min", String.valueOf(config.getMinTownResidents())));
     }
 
     private void handleReload(CommandSender sender) {
