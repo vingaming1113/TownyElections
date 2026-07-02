@@ -50,6 +50,8 @@ campaign:
 
 party:
   set: "&aYour political party has been set to &f{party}&a."
+  current: "&7Your current political party is &f{party}&7. Use &f/{label} {party_command} <name>&7 to change it, or &f/{label} {party_command} leave&7 to become independent."
+  left: "&aYou have left your political party and are now &f{party}&a."
   too-long: "&cYour political party name is too long (max &e{max}&c characters)."
   empty: "&cUsage: &f/{label} {party} <existing party or new name>"
 

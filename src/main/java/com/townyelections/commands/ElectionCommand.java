@@ -171,8 +171,21 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (rest.length == 0) {
-            messages.send(sender, "party.empty", MessageManager.placeholders(
-                    "label", label, "party", commands.literal(CommandConfig.PARTY)));
+            Election election = elections.getElection(ctx.town());
+            Candidate candidate = election == null ? null : election.getCandidate(ctx.resident().getUUID());
+            if (candidate == null) {
+                messages.send(sender, "candidate.not-a-candidate");
+                return;
+            }
+            messages.send(sender, "party.current", MessageManager.placeholders(
+                    "party", candidate.getPartyName(),
+                    "label", label,
+                    "party_command", commands.literal(CommandConfig.PARTY)));
+            return;
+        }
+        if (rest.length == 1 && rest[0].equalsIgnoreCase("leave")) {
+            respond(sender, elections.leaveParty(ctx.resident(), ctx.town()),
+                    MessageManager.placeholders("party", config.getDefaultPartyName()));
             return;
         }
         String partyName = String.join(" ", rest);

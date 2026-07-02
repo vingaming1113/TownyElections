@@ -150,6 +150,20 @@ public class ElectionManager {
         return OperationResult.ok("campaign.set");
     }
 
+    public OperationResult leaveParty(Resident resident, Town town) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        Candidate candidate = election.getCandidate(resident.getUUID());
+        if (candidate == null) {
+            return OperationResult.fail("candidate.not-a-candidate");
+        }
+        candidate.setPartyName(config.getDefaultPartyName());
+        save();
+        return OperationResult.ok("party.left");
+    }
+
     public OperationResult setPartyName(Resident resident, Town town, String partyName) {
         Election election = active.get(town.getUUID());
         if (election == null) {
