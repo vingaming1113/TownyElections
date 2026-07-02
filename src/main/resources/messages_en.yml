@@ -54,6 +54,7 @@ party:
   left: "&aYou have left your political party and are now &f{party}&a."
   renamed: "&aRenamed political party &f{old}&a to &f{new}&a for this election."
   no-such-party: "&cNo current party named &f{old}&c exists in this election."
+  max-parties: "&cThis election has reached the maximum number of political parties."
   rename-usage: "&cUsage: &f/{label} {party} rename <old> <new>"
   too-long: "&cYour political party name is too long (max &e{max}&c characters)."
   empty: "&cUsage: &f/{label} {party} <existing party or new name>"

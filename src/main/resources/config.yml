@@ -99,6 +99,9 @@ campaign:
   # If true, the default party is hidden from /election parties and party
   # result summaries. Candidates still keep the label in candidate lists.
   hide-default-party-from-standings: false
+  # Maximum number of non-default parties that may exist in one active election.
+  # 0 = unlimited. Players may always join an existing party or leave to default.
+  max-parties: 0
   # A simple denylist. Campaign messages containing any of these (case
   # insensitive) substrings are rejected.
   blocked-words:

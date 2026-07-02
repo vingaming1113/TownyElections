@@ -20,10 +20,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -192,6 +194,31 @@ public class ElectionManager {
         return OperationResult.ok("party.renamed");
     }
 
+    private boolean wouldExceedPartyLimit(Election election, UUID changingCandidate, String targetParty) {
+        int max = config.getMaxParties();
+        if (max <= 0 || targetParty.equalsIgnoreCase(config.getDefaultPartyName())) {
+            return false;
+        }
+
+        Set<String> parties = new HashSet<>();
+        boolean targetAlreadyExists = false;
+        for (Candidate candidate : election.getCandidateList()) {
+            if (candidate.getUuid().equals(changingCandidate)) {
+                continue;
+            }
+            String party = candidate.getPartyName();
+            if (party == null || party.isBlank() || party.equalsIgnoreCase(config.getDefaultPartyName())) {
+                continue;
+            }
+            String normalized = party.toLowerCase(Locale.ROOT);
+            parties.add(normalized);
+            if (party.equalsIgnoreCase(targetParty)) {
+                targetAlreadyExists = true;
+            }
+        }
+        return !targetAlreadyExists && parties.size() >= max;
+    }
+
     public OperationResult setPartyName(Resident resident, Town town, String partyName) {
         Election election = active.get(town.getUUID());
         if (election == null) {
@@ -207,6 +234,9 @@ public class ElectionManager {
         String trimmed = partyName.trim();
         if (trimmed.length() > config.getMaxPartyNameLength()) {
             return OperationResult.fail("party.too-long");
+        }
+        if (wouldExceedPartyLimit(election, resident.getUUID(), trimmed)) {
+            return OperationResult.fail("party.max-parties");
         }
         candidate.setPartyName(trimmed);
         save();

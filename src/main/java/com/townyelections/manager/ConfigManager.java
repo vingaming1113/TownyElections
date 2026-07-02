@@ -45,6 +45,7 @@ public class ConfigManager {
     private int maxPartyNameLength;
     private String defaultPartyName;
     private boolean hideDefaultPartyFromStandings;
+    private int maxParties;
     private List<String> blockedWords;
 
     // winner
@@ -94,6 +95,7 @@ public class ConfigManager {
         maxPartyNameLength = Math.max(1, c.getInt("campaign.max-party-name-length", 32));
         defaultPartyName = c.getString("campaign.default-party-name", "Independent");
         hideDefaultPartyFromStandings = c.getBoolean("campaign.hide-default-party-from-standings", false);
+        maxParties = Math.max(0, c.getInt("campaign.max-parties", 0));
         blockedWords = c.getStringList("campaign.blocked-words");
 
         setAsMayor = c.getBoolean("winner.set-as-mayor", false);
@@ -143,6 +145,7 @@ public class ConfigManager {
     public int getMaxPartyNameLength() { return maxPartyNameLength; }
     public String getDefaultPartyName() { return defaultPartyName; }
     public boolean isHideDefaultPartyFromStandings() { return hideDefaultPartyFromStandings; }
+    public int getMaxParties() { return maxParties; }
     public List<String> getBlockedWords() { return blockedWords; }
 
     public boolean isSetAsMayor() { return setAsMayor; }
