@@ -94,7 +94,7 @@ status:
   phase: "&7Phase: &f{phase}"
   candidates-count: "&7Candidates: &f{count}"
   votes-count: "&7Votes cast: &f{votes}"
-  your-vote: "&7Your vote: &f{choice}"
+  your-vote: "&7Your vote: &f{choice} &8[{party}]"
   your-vote-none: "&7Your vote: &8(none)"
   candidate-list-header: "&7Candidates (use &f/{label} {vote} <name>&7):"
   candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message}"

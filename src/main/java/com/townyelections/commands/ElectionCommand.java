@@ -267,7 +267,9 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         } else {
             Candidate c = election.getCandidate(choice);
             messages.sendNoPrefix(sender, "status.your-vote",
-                    MessageManager.placeholders("choice", c == null ? "?" : c.getName()));
+                    MessageManager.placeholders(
+                            "choice", c == null ? "?" : c.getName(),
+                            "party", c == null ? "?" : c.getPartyName()));
         }
 
         printCandidateList(sender, election, label);
