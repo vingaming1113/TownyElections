@@ -1,5 +1,12 @@
 # TownyElections
 
+[![Build](https://github.com/vingaming1113/TownyElections/actions/workflows/build.yml/badge.svg)](https://github.com/vingaming1113/TownyElections/actions/workflows/build.yml)
+[![bStats](https://img.shields.io/badge/bStats-TownyElection-2f8fed?logo=googleanalytics&logoColor=white)](https://bstats.org/plugin/bukkit/TownyElection/32328)
+[![Java 21](https://img.shields.io/badge/Java-21-f89820?logo=openjdk&logoColor=white)](https://adoptium.net/)
+[![Paper 1.21.4+](https://img.shields.io/badge/Paper-1.21.4%2B-34d399)](https://papermc.io/)
+[![Towny](https://img.shields.io/badge/Towny-required-8b5cf6)](https://github.com/TownyAdvanced/Towny)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A **Paper 1.21.4+** plugin that adds a formal, fully-configurable **election system**
 to towns managed by the [Towny](https://github.com/TownyAdvanced/Towny) plugin.
 
@@ -26,6 +33,12 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 - **Persistence** — active elections and results survive restarts (`data.yml`).
 - **Integrations** — optional **PlaceholderAPI** placeholders and **bStats** metrics.
 - **Localised, colourised messages** — legacy `&` and hex `&#RRGGBB` colours.
+
+---
+
+## Stats
+
+[![TownyElection bStats](https://bstats.org/signatures/bukkit/TownyElection.svg)](https://bstats.org/plugin/bukkit/TownyElection/32328)
 
 ---
 
