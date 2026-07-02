@@ -56,6 +56,10 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                              @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
+            if (sender instanceof Player player) {
+                plugin.getElectionMenu().openMain(player);
+                return true;
+            }
             sendHelp(sender, label);
             return true;
         }

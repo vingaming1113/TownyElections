@@ -1,6 +1,7 @@
 package com.townyelections;
 
 import com.townyelections.commands.ElectionCommand;
+import com.townyelections.gui.ElectionMenu;
 import com.townyelections.integration.ElectionsPlaceholderExpansion;
 import com.townyelections.integration.TownyHook;
 import com.townyelections.listeners.PlayerListener;
@@ -29,6 +30,7 @@ public class TownyElections extends JavaPlugin {
     private MessageManager messageManager;
     private TownyHook townyHook;
     private ElectionManager electionManager;
+    private ElectionMenu electionMenu;
 
     private BukkitTask tickTask;
 
@@ -59,6 +61,7 @@ public class TownyElections extends JavaPlugin {
         electionManager.load();
 
         // Commands.
+        electionMenu = new ElectionMenu(this);
         PluginCommand command = getCommand("election");
         if (command != null) {
             ElectionCommand executor = new ElectionCommand(this);
@@ -70,6 +73,7 @@ public class TownyElections extends JavaPlugin {
 
         // Listeners.
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
+        Bukkit.getPluginManager().registerEvents(electionMenu, this);
 
         // State-machine tick: every 20 ticks (~1 second) is plenty for durations
         // measured in minutes/days and keeps timing responsive for admins.
@@ -155,5 +159,9 @@ public class TownyElections extends JavaPlugin {
 
     public ElectionManager getElectionManager() {
         return electionManager;
+    }
+
+    public ElectionMenu getElectionMenu() {
+        return electionMenu;
     }
 }

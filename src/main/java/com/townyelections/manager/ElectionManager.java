@@ -259,13 +259,26 @@ public class ElectionManager {
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
+        Candidate candidate = election.findCandidateByName(candidateName);
+        return castVote(voter, town, election, candidate);
+    }
+
+    public OperationResult castVote(Resident voter, Town town, UUID candidateUuid) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        Candidate candidate = election.getCandidate(candidateUuid);
+        return castVote(voter, town, election, candidate);
+    }
+
+    private OperationResult castVote(Resident voter, Town town, Election election, Candidate candidate) {
         if (election.getPhase() != ElectionPhase.VOTING && election.getPhase() != ElectionPhase.RUNOFF) {
             return OperationResult.fail("vote.not-open");
         }
         if (!towny.isResidentOfTown(voter.getUUID(), town)) {
             return OperationResult.fail("vote.not-eligible");
         }
-        Candidate candidate = election.findCandidateByName(candidateName);
         if (candidate == null) {
             return OperationResult.fail("vote.no-such-candidate");
         }

@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -72,6 +73,16 @@ public class MessageManager {
     /** Resolve a key with placeholders and return a coloured component (no prefix). */
     public Component component(String key, Map<String, String> placeholders) {
         return TextUtil.colorize(apply(raw(key), placeholders));
+    }
+
+    /** Resolve a key with placeholders and return Bukkit legacy text. */
+    public String legacy(String key, Map<String, String> placeholders) {
+        return TextUtil.legacy(apply(raw(key), placeholders));
+    }
+
+    /** Raw string list for a key, falling back to defaults when present. */
+    public List<String> rawList(String key) {
+        return messages.getStringList(key);
     }
 
     /** Send a prefixed message to a sender. */

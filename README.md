@@ -24,6 +24,8 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 - **Political parties** — candidates can organize under configurable party labels,
   voters can inspect party standings with `/election parties`, and results include
   party-level vote totals alongside individual winners.
+- **Inventory GUI** — players can run `/election` with no arguments to open a
+  click-driven election desk, inspect candidates, and vote from player-head icons.
 - **Voting** — one command to cast (and optionally change) a vote, with eligibility
   restricted to town residents. Supports secret ballots (hidden tallies).
 - **Automatic winner rewards** — grants configurable Towny **town ranks**, optionally
@@ -62,7 +64,7 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 mvn clean package
 ```
 
-The shaded jar is produced at `target/TownyElections-1.0.2.jar`. Drop it into
+The shaded jar is produced at `target/TownyElections-1.1.0.jar`. Drop it into
 your server's `plugins/` folder alongside Towny.
 
 > The build depends on the Paper API, Towny (via JitPack), and PlaceholderAPI
@@ -77,6 +79,7 @@ literal below is **configurable** in `config.yml` under the `commands:` section.
 
 | Command                         | Permission                | Description                          |
 |---------------------------------|---------------------------|--------------------------------------|
+| `/election`                     | Town resident             | Open the election GUI.               |
 | `/election run`                 | `townyelections.candidate`| Stand as a candidate.                |
 | `/election withdraw`            | `townyelections.candidate`| Withdraw from the race.              |
 | `/election campaign <message>`  | `townyelections.candidate`| Set your campaign message.           |
@@ -92,6 +95,18 @@ literal below is **configurable** in `config.yml` under the `commands:` section.
 | `/election reload`              | `townyelections.admin`    | Reload configuration.                |
 
 Admins may target another town by name; otherwise the sender's own town is used.
+
+### Inventory GUI
+
+Running `/election` as a player opens the election desk for your town. The menu
+shows the current phase, remaining time, candidate count, vote count, your current
+vote, and quick actions to stand, withdraw, or open the candidate roster. The
+roster uses candidate player heads as vote buttons and still enforces the same
+permissions, Towny residency checks, voting phase checks, self-vote setting, and
+vote-change setting as `/election vote <candidate>`.
+
+The GUI cancels menu clicks and drags inside its inventories so players cannot
+take, place, shift-click, or drag plugin menu items into their own inventory.
 
 ### Political parties
 

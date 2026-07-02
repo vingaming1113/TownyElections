@@ -13,8 +13,8 @@ softdepend:
 
 commands:
   election:
-    description: Root command for the TownyElections plugin.
-    usage: /election help
+    description: Open the TownyElections GUI or use subcommands.
+    usage: /election
     aliases:
       - elec
       - te

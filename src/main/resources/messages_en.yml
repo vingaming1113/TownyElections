@@ -78,6 +78,56 @@ vote:
   not-eligible: "&cOnly residents of &f{town}&c may vote in this election."
   reminder: "&eVoting in &f{town}&e closes in &f{time}&e and you have not voted yet! Use &f/{label} {vote} <candidate>&e."
 
+
+gui:
+  main-title: "&1Election Desk &8- &f{town}"
+  roster-title: "&1Candidate Roster &8- &f{town} &7({page}/{pages})"
+  phase-none: "&7NONE"
+  vote-none: "&8(none)"
+  status-name: "&bTown Election"
+  status-lore:
+    - "&7Phase: &f{phase}"
+    - "&7Time left: &f{time}"
+    - "&7Candidates: &f{candidates}"
+    - "&7Votes cast: &f{votes}"
+    - "&7Your vote: &f{your_vote}"
+  main-candidates-name: "&aOpen Candidate Roster"
+  main-candidates-lore:
+    - "&7View the ballot for &f{town}&7."
+    - "&7Candidate heads become vote buttons during voting."
+  main-run-name: "&eStand as Candidate"
+  main-run-lore:
+    - "&7Enter the race for your town."
+    - "&7Available during nominations."
+  main-withdraw-name: "&cWithdraw Candidacy"
+  main-withdraw-lore:
+    - "&7Leave the current race."
+    - "&7Votes for you are cleared if you withdraw."
+  back-name: "&eBack to Election Desk"
+  back-lore:
+    - "&7Return to the main menu."
+  previous-page-name: "&aPrevious Page"
+  previous-page-lore:
+    - "&7Page &f{page}&7 of &f{pages}&7."
+  next-page-name: "&aNext Page"
+  next-page-lore:
+    - "&7Page &f{page}&7 of &f{pages}&7."
+  no-candidates-name: "&cNo Candidates"
+  no-candidates-lore:
+    - "&7No residents have entered this election yet."
+  candidate-name: "&f{candidate} &8[&b{party}&8]"
+  candidate-lore-secret:
+    - "&7Campaign: &f{message}"
+    - "&7Live vote totals are hidden."
+    - "&aClick to vote for {candidate}."
+  candidate-lore-public:
+    - "&7Campaign: &f{message}"
+    - "&7Votes: &f{candidate_votes}"
+    - "&aClick to vote for {candidate}."
+  candidate-lore-closed:
+    - "&7Campaign: &f{message}"
+    - "&7Voting is not open right now."
+
 results:
   header: "&8&m-----&r &bElection Results &8- &f{town} &8&m-----"
   line: "&7 {rank}. &f{candidate} &8[{party}] &8- &e{votes}&7 vote(s) &8(&7{percent}%&8)"

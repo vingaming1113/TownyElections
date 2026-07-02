@@ -31,8 +31,15 @@ public final class TextUtil {
         if (input == null) {
             return Component.empty();
         }
-        String translated = translateCodes(input);
-        return SERIALIZER.deserialize(translated);
+        return SERIALIZER.deserialize(legacy(input));
+    }
+
+    /** Translate supported colour codes into Bukkit legacy section-sign text. */
+    public static String legacy(String input) {
+        if (input == null) {
+            return "";
+        }
+        return translateCodes(input);
     }
 
     private static String translateCodes(String input) {
