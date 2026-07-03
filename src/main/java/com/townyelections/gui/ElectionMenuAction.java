@@ -9,6 +9,7 @@ enum ElectionMenuAction {
     SET_CAMPAIGN,
     SET_PARTY,
     LEAVE_PARTY,
+    CLEAR_BALLOT,
     ADMIN_START,
     ADMIN_STOP,
     ADMIN_CANCEL,

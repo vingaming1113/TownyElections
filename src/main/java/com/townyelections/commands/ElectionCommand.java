@@ -13,6 +13,7 @@ import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
+import com.townyelections.model.VotingSystem;
 import com.townyelections.util.DurationUtil;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -245,20 +246,45 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         if (ctx == null) {
             return;
         }
+        Election election = elections.getElection(ctx.town());
+        VotingSystem system = election == null ? config.getVotingSystem() : election.getVotingSystem();
         if (rest.length == 0) {
-            messages.send(sender, "vote.usage", MessageManager.placeholders(
+            messages.send(sender, voteUsageKey(system), MessageManager.placeholders(
                     "label", label, "vote", commands.literal(CommandConfig.VOTE)));
             return;
         }
-        String candidateInput = String.join(" ", rest);
-        OperationResult result = elections.castVote(ctx.resident(), ctx.town(), candidateInput);
+
+        OperationResult result;
         Map<String, String> ph = MessageManager.placeholders(
                 "town", ctx.town().getName(),
-                "name", candidateInput);
-        if (result.isSuccess() && result.getPayload() instanceof String candidateName) {
-            ph.put("candidate", candidateName);
+                "name", String.join(" ", rest));
+        if (system == VotingSystem.PLURALITY) {
+            result = elections.castVote(ctx.resident(), ctx.town(), String.join(" ", rest));
+        } else {
+            result = elections.castBallot(ctx.resident(), ctx.town(), Arrays.asList(rest));
+        }
+        if (result.getPayload() instanceof String payload) {
+            if (result.isSuccess()) {
+                ph.put("candidate", payload);
+                ph.put("ballot", payload);
+            } else {
+                ph.put("name", payload);
+            }
+        }
+        if (!result.isSuccess() && "vote.usage".equals(result.getMessageKey())) {
+            messages.send(sender, voteUsageKey(system), MessageManager.placeholders(
+                    "label", label, "vote", commands.literal(CommandConfig.VOTE)));
+            return;
         }
         respond(sender, result, ph);
+    }
+
+    private String voteUsageKey(VotingSystem system) {
+        return switch (system) {
+            case RANKED_CHOICE -> "vote.usage-ranked";
+            case APPROVAL -> "vote.usage-approval";
+            default -> "vote.usage";
+        };
     }
 
     // ---- Info --------------------------------------------------------------
@@ -288,6 +314,8 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             default -> election.getPhase().name();
         };
         messages.sendNoPrefix(sender, "status.phase", MessageManager.placeholders("phase", phaseLabel));
+        messages.sendNoPrefix(sender, "status.voting-system", MessageManager.placeholders(
+                "system", messages.raw(election.getVotingSystem().messageKey())));
 
         String timeKey = election.getPhase() == ElectionPhase.NOMINATION
                 ? "election.time-remaining-nomination" : "election.time-remaining-voting";
@@ -299,16 +327,19 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.sendNoPrefix(sender, "status.votes-count",
                 MessageManager.placeholders("votes", String.valueOf(election.getTotalVotes())));
 
-        // Show the viewer's own vote.
-        UUID choice = election.getVoteChoice(ctx.resident().getUUID());
-        if (choice == null) {
+        // Show the viewer's own ballot.
+        List<UUID> ballot = election.getBallot(ctx.resident().getUUID());
+        if (ballot.isEmpty()) {
             messages.sendNoPrefix(sender, "status.your-vote-none", null);
-        } else {
-            Candidate c = election.getCandidate(choice);
+        } else if (election.getVotingSystem() == VotingSystem.PLURALITY) {
+            Candidate c = election.getCandidate(ballot.get(0));
             messages.sendNoPrefix(sender, "status.your-vote",
                     MessageManager.placeholders(
                             "choice", c == null ? "?" : c.getName(),
                             "party", c == null ? "?" : c.getPartyName()));
+        } else {
+            messages.sendNoPrefix(sender, "status.your-ballot", MessageManager.placeholders(
+                    "ballot", elections.describeBallot(election, ctx.resident().getUUID())));
         }
 
         printCandidateList(sender, election, label);
@@ -408,6 +439,29 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void printRunoffRounds(CommandSender sender, ElectionResult result) {
+        if (result.getRounds().isEmpty()) {
+            return;
+        }
+        for (ElectionResult.Round round : result.getRounds()) {
+            messages.sendNoPrefix(sender, "results.round-header",
+                    MessageManager.placeholders("round", String.valueOf(round.number())));
+            for (ElectionResult.RoundEntry entry : round.entries()) {
+                messages.sendNoPrefix(sender, "results.round-line", MessageManager.placeholders(
+                        "candidate", entry.name(),
+                        "votes", String.valueOf(entry.votes())));
+            }
+            if (!round.eliminated().isEmpty()) {
+                messages.sendNoPrefix(sender, "results.round-eliminated", MessageManager.placeholders(
+                        "candidates", String.join(", ", round.eliminated())));
+            }
+            if (round.exhausted() > 0) {
+                messages.sendNoPrefix(sender, "results.round-exhausted", MessageManager.placeholders(
+                        "count", String.valueOf(round.exhausted())));
+            }
+        }
+    }
+
     private void printResultPartyList(CommandSender sender, ElectionResult result) {
         Map<String, List<String>> partyCandidates = new LinkedHashMap<>();
         Map<String, Integer> partyVotes = new LinkedHashMap<>();
@@ -483,6 +537,8 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
         messages.sendNoPrefix(sender, "results.header",
                 MessageManager.placeholders("town", result.getTownName()));
+        messages.sendNoPrefix(sender, "results.voting-system", MessageManager.placeholders(
+                "system", messages.raw(result.getVotingSystem().messageKey())));
 
         int rank = 1;
         int total = Math.max(1, result.getTotalVotes());
@@ -496,6 +552,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                     "percent", String.valueOf(percent)));
         }
 
+        printRunoffRounds(sender, result);
         printResultPartyList(sender, result);
 
         if (result.hasWinner()) {
@@ -637,13 +694,18 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 return out;
             }
             String partial = args[args.length - 1].toLowerCase();
-            // Suggest candidate names for voting.
-            if (args.length == 2 && CommandConfig.VOTE.equals(action) && sender instanceof Player player) {
+            // Suggest candidate names for voting. Ranked-choice and approval
+            // ballots list several names, so complete every argument position
+            // and skip names already on the command line.
+            if (CommandConfig.VOTE.equals(action) && sender instanceof Player player) {
                 Town town = towny.getPlayerTown(player);
                 Election election = elections.getElection(town);
-                if (election != null) {
+                if (election != null
+                        && (args.length == 2 || election.getVotingSystem() != VotingSystem.PLURALITY)) {
+                    List<String> alreadyTyped = Arrays.asList(args).subList(1, args.length - 1);
                     for (Candidate c : election.getCandidateList()) {
-                        if (c.getName().toLowerCase().startsWith(partial)) {
+                        boolean used = alreadyTyped.stream().anyMatch(c.getName()::equalsIgnoreCase);
+                        if (!used && c.getName().toLowerCase().startsWith(partial)) {
                             out.add(c.getName());
                         }
                     }

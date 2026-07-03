@@ -29,6 +29,10 @@ public class OperationResult {
         return new OperationResult(false, messageKey, null);
     }
 
+    public static OperationResult fail(String messageKey, Object payload) {
+        return new OperationResult(false, messageKey, payload);
+    }
+
     public boolean isSuccess() {
         return success;
     }
