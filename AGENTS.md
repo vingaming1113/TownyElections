@@ -397,26 +397,6 @@ If any item is skipped, call it out clearly.
 4. Save after mutations.
 5. Consider how old `data.yml` files behave.
 
-### Make a new plugin version
-
-When a task creates a new release/version, bump the plugin version in the same
-change. The canonical version is the top-level `<version>` in `pom.xml`.
-
-1. Decide the next semantic version (`MAJOR.MINOR.PATCH`) based on the change.
-2. Update the project version in `pom.xml`, for example:
-
-   ```xml
-   <artifactId>TownyElections</artifactId>
-   <version>1.1.1</version>
-   <name>TownyElections</name>
-   ```
-
-3. Do not hardcode a matching version in `plugin.yml`; it already uses
-   `${project.version}` and Maven filters it into the built jar.
-4. Update README or release documentation if it mentions the jar name, version,
-   compatibility, or release behavior.
-5. Run `mvn clean package` unless the user explicitly says not to build.
-
 ### Bump Towny
 
 1. Check whether the version resolves on JitPack.
