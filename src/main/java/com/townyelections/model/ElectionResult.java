@@ -33,6 +33,14 @@ public class ElectionResult {
         }
     }
 
+    /** One line of an instant-runoff round: a candidate and their votes that round. */
+    public record RoundEntry(String name, int votes) {
+    }
+
+    /** One recorded instant-runoff counting round. */
+    public record Round(int number, List<RoundEntry> entries, List<String> eliminated, int exhausted) {
+    }
+
     private final UUID townUuid;
     private final String townName;
     private final UUID winnerUuid;
@@ -42,10 +50,12 @@ public class ElectionResult {
     private final int residentCount;
     private final long concludedAt;
     private final List<Standing> standings;
+    private final VotingSystem votingSystem;
+    private final List<Round> rounds;
 
     public ElectionResult(UUID townUuid, String townName, UUID winnerUuid, String winnerName,
                           int winnerVotes, int totalVotes, int residentCount, long concludedAt,
-                          List<Standing> standings) {
+                          List<Standing> standings, VotingSystem votingSystem, List<Round> rounds) {
         this.townUuid = townUuid;
         this.townName = townName;
         this.winnerUuid = winnerUuid;
@@ -55,6 +65,8 @@ public class ElectionResult {
         this.residentCount = residentCount;
         this.concludedAt = concludedAt;
         this.standings = standings;
+        this.votingSystem = votingSystem == null ? VotingSystem.PLURALITY : votingSystem;
+        this.rounds = rounds == null ? List.of() : rounds;
     }
 
     public UUID getTownUuid() {
@@ -97,6 +109,15 @@ public class ElectionResult {
         return standings;
     }
 
+    public VotingSystem getVotingSystem() {
+        return votingSystem;
+    }
+
+    /** Instant-runoff counting rounds; empty for non-ranked systems. */
+    public List<Round> getRounds() {
+        return rounds;
+    }
+
     // ---- Serialization -----------------------------------------------------
 
     public void serialize(ConfigurationSection section) {
@@ -108,6 +129,7 @@ public class ElectionResult {
         section.set("total-votes", totalVotes);
         section.set("resident-count", residentCount);
         section.set("concluded-at", concludedAt);
+        section.set("voting-system", votingSystem.name());
 
         ConfigurationSection standingsSection = section.createSection("standings");
         int i = 0;
@@ -117,6 +139,24 @@ public class ElectionResult {
             s.set("name", standing.name);
             s.set("party-name", standing.partyName);
             s.set("votes", standing.votes);
+        }
+
+        if (!rounds.isEmpty()) {
+            ConfigurationSection roundsSection = section.createSection("rounds");
+            int r = 0;
+            for (Round round : rounds) {
+                ConfigurationSection roundSection = roundsSection.createSection("r" + (r++));
+                roundSection.set("number", round.number());
+                roundSection.set("eliminated", round.eliminated());
+                roundSection.set("exhausted", round.exhausted());
+                ConfigurationSection entriesSection = roundSection.createSection("entries");
+                int e = 0;
+                for (RoundEntry entry : round.entries()) {
+                    ConfigurationSection entrySection = entriesSection.createSection("e" + (e++));
+                    entrySection.set("name", entry.name());
+                    entrySection.set("votes", entry.votes());
+                }
+            }
         }
     }
 
@@ -172,7 +212,34 @@ public class ElectionResult {
             }
         }
 
+        VotingSystem votingSystem = VotingSystem.fromString(
+                section.getString("voting-system"), VotingSystem.PLURALITY);
+
+        List<Round> rounds = new ArrayList<>();
+        ConfigurationSection roundsSection = section.getConfigurationSection("rounds");
+        if (roundsSection != null) {
+            for (String key : roundsSection.getKeys(false)) {
+                ConfigurationSection roundSection = roundsSection.getConfigurationSection(key);
+                if (roundSection == null) {
+                    continue;
+                }
+                List<RoundEntry> entries = new ArrayList<>();
+                ConfigurationSection entriesSection = roundSection.getConfigurationSection("entries");
+                if (entriesSection != null) {
+                    for (String entryKey : entriesSection.getKeys(false)) {
+                        ConfigurationSection entrySection = entriesSection.getConfigurationSection(entryKey);
+                        if (entrySection != null) {
+                            entries.add(new RoundEntry(entrySection.getString("name", "Unknown"),
+                                    entrySection.getInt("votes", 0)));
+                        }
+                    }
+                }
+                rounds.add(new Round(roundSection.getInt("number", rounds.size() + 1), entries,
+                        roundSection.getStringList("eliminated"), roundSection.getInt("exhausted", 0)));
+            }
+        }
+
         return new ElectionResult(townUuid, townName, winnerUuid, winnerName, winnerVotes,
-                totalVotes, residentCount, concludedAt, standings);
+                totalVotes, residentCount, concludedAt, standings, votingSystem, rounds);
     }
 }

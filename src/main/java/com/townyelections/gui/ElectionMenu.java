@@ -12,6 +12,7 @@ import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
+import com.townyelections.model.VotingSystem;
 import com.townyelections.util.DurationUtil;
 import com.townyelections.util.TextUtil;
 import net.kyori.adventure.text.Component;
@@ -46,6 +47,7 @@ public class ElectionMenu implements Listener {
     private static final int PAGE_SIZE = 54;
     private static final int BACK_SLOT = 45;
     private static final int PREVIOUS_SLOT = 48;
+    private static final int CLEAR_BALLOT_SLOT = 49;
     private static final int NEXT_SLOT = 50;
     private static final int STATUS_SLOT = 4;
     private static final List<Integer> CONTENT_SLOTS = List.of(
@@ -157,6 +159,12 @@ public class ElectionMenu implements Listener {
                 holder.setCandidate(slot, candidate.getUuid());
                 inventory.setItem(slot, candidateItem(candidate, election, tally, ctx.resident()));
             }
+        }
+
+        if (election != null && election.getVotingSystem() != VotingSystem.PLURALITY
+                && !election.getBallot(ctx.resident().getUUID()).isEmpty()) {
+            addAction(inventory, holder, CLEAR_BALLOT_SLOT, ElectionMenuAction.CLEAR_BALLOT,
+                    Material.MILK_BUCKET, "gui.clear-ballot-name", "gui.clear-ballot-lore", menuPlaceholders);
         }
 
         addPageButtons(inventory, holder, menuPlaceholders, page, maxPage);
@@ -297,6 +305,7 @@ public class ElectionMenu implements Listener {
             case SET_CAMPAIGN -> beginTextInput(player, holder.getTownUuid(), PendingInputType.CAMPAIGN);
             case SET_PARTY -> beginTextInput(player, holder.getTownUuid(), PendingInputType.PARTY);
             case LEAVE_PARTY -> handleLeaveParty(player, holder.getTownUuid());
+            case CLEAR_BALLOT -> handleClearBallot(player, holder);
             case ADMIN_START -> handleAdmin(player, holder.getTownUuid(), ElectionMenuAction.ADMIN_START);
             case ADMIN_STOP -> handleAdmin(player, holder.getTownUuid(), ElectionMenuAction.ADMIN_STOP);
             case ADMIN_CANCEL -> handleAdmin(player, holder.getTownUuid(), ElectionMenuAction.ADMIN_CANCEL);
@@ -406,6 +415,12 @@ public class ElectionMenu implements Listener {
         if (ctx == null) {
             return;
         }
+        Election election = elections.getElection(ctx.town());
+        VotingSystem system = election == null ? VotingSystem.PLURALITY : election.getVotingSystem();
+        if (system != VotingSystem.PLURALITY) {
+            handleBallotToggleClick(player, holder, ctx, election, candidateUuid);
+            return;
+        }
         OperationResult result = elections.castVote(ctx.resident(), ctx.town(), candidateUuid);
         Map<String, String> placeholders = MessageManager.placeholders(
                 "town", ctx.town().getName(),
@@ -418,6 +433,41 @@ public class ElectionMenu implements Listener {
         if (!result.isSuccess()) {
             openRoster(player, holder.getTownUuid(), holder.getPage());
         }
+    }
+
+    /**
+     * Ranked-choice and approval ballots build up click by click, so the
+     * roster stays open and refreshes to show the updated ballot state.
+     */
+    private void handleBallotToggleClick(Player player, ElectionMenuHolder holder, PlayerContext ctx,
+                                         Election election, UUID candidateUuid) {
+        OperationResult result = elections.toggleBallotEntry(ctx.resident(), ctx.town(), candidateUuid);
+        Map<String, String> placeholders = MessageManager.placeholders(
+                "town", ctx.town().getName(),
+                "name", candidateName(ctx.town(), candidateUuid));
+        if (result.isSuccess() && result.getPayload() instanceof String candidateName) {
+            placeholders.put("candidate", candidateName);
+            int rank = election.getBallot(ctx.resident().getUUID()).indexOf(candidateUuid) + 1;
+            placeholders.put("rank", String.valueOf(Math.max(1, rank)));
+            String ballot = elections.describeBallot(election, ctx.resident().getUUID());
+            placeholders.put("ballot", ballot.isEmpty() ? messages.raw("gui.vote-none") : ballot);
+        }
+        respond(player, result, placeholders);
+        openRoster(player, holder.getTownUuid(), holder.getPage());
+    }
+
+    private void handleClearBallot(Player player, ElectionMenuHolder holder) {
+        if (!player.hasPermission("townyelections.vote")) {
+            messages.send(player, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContextForTown(player, holder.getTownUuid());
+        if (ctx == null) {
+            return;
+        }
+        respond(player, elections.clearBallot(ctx.resident(), ctx.town()),
+                MessageManager.placeholders("town", ctx.town().getName()));
+        openRoster(player, holder.getTownUuid(), holder.getPage());
     }
 
     private void handleAdmin(Player player, UUID townUuid, ElectionMenuAction action) {
@@ -572,7 +622,7 @@ public class ElectionMenu implements Listener {
             item.setItemMeta(skullMeta);
         }
         Map<String, String> placeholders = placeholders(election, candidate, tally, viewer);
-        applyMeta(item, "gui.candidate-name", candidateLoreKey(election), placeholders);
+        applyMeta(item, "gui.candidate-name", candidateLoreKey(election, candidate, viewer), placeholders);
         return item;
     }
 
@@ -599,12 +649,21 @@ public class ElectionMenu implements Listener {
         return item;
     }
 
-    private String candidateLoreKey(Election election) {
+    private String candidateLoreKey(Election election, Candidate candidate, Resident viewer) {
         if (election == null || (election.getPhase() != ElectionPhase.VOTING
                 && election.getPhase() != ElectionPhase.RUNOFF)) {
             return "gui.candidate-lore-closed";
         }
-        return config.isPublicLiveResults() ? "gui.candidate-lore-public" : "gui.candidate-lore-secret";
+        boolean onBallot = viewer != null
+                && election.getBallot(viewer.getUUID()).contains(candidate.getUuid());
+        return switch (election.getVotingSystem()) {
+            case RANKED_CHOICE -> onBallot
+                    ? "gui.candidate-lore-ranked" : "gui.candidate-lore-unranked";
+            case APPROVAL -> onBallot
+                    ? "gui.candidate-lore-approved" : "gui.candidate-lore-unapproved";
+            default -> config.isPublicLiveResults()
+                    ? "gui.candidate-lore-public" : "gui.candidate-lore-secret";
+        };
     }
 
     private ItemStack statusItem(Town town, Election election, Resident viewer) {
@@ -731,17 +790,22 @@ public class ElectionMenu implements Listener {
         String yourParty = viewerCandidate == null ? "-" : viewerCandidate.getPartyName();
         String yourCampaign = viewerCandidate == null ? "-" : viewerCandidate.getCampaignMessage();
         String voted = messages.raw("gui.vote-none");
-        if (election != null && viewer != null) {
-            UUID choice = election.getVoteChoice(viewer.getUUID());
-            Candidate chosen = choice == null ? null : election.getCandidate(choice);
-            if (chosen != null) {
-                voted = chosen.getName();
+        if (election != null && viewer != null && election.hasVoted(viewer.getUUID())) {
+            voted = elections.describeBallot(election, viewer.getUUID());
+        }
+        String system = election == null ? "-" : messages.raw(election.getVotingSystem().messageKey());
+        String yourRank = "-";
+        if (election != null && viewer != null && candidate != null) {
+            int rank = election.getBallot(viewer.getUUID()).indexOf(candidate.getUuid()) + 1;
+            if (rank > 0) {
+                yourRank = String.valueOf(rank);
             }
         }
 
         return MessageManager.placeholders(
                 "town", townName,
                 "phase", phase,
+                "system", system,
                 "time", time,
                 "candidates", election == null ? "0" : String.valueOf(election.getCandidateCount()),
                 "votes", election == null ? "0" : String.valueOf(election.getTotalVotes()),
@@ -750,6 +814,7 @@ public class ElectionMenu implements Listener {
                 "candidate_votes", String.valueOf(votes),
                 "message", candidate == null ? "-" : candidate.getCampaignMessage(),
                 "your_vote", voted,
+                "your_rank", yourRank,
                 "your_party", yourParty,
                 "your_campaign", yourCampaign,
                 "default_party", config.getDefaultPartyName());
@@ -767,6 +832,8 @@ public class ElectionMenu implements Listener {
                 .orElse(config.getDefaultPartyName());
         return MessageManager.placeholders(
                 "town", result.getTownName(),
+                "system", messages.raw(result.getVotingSystem().messageKey()),
+                "rounds", String.valueOf(result.getRounds().size()),
                 "rank", String.valueOf(rank),
                 "candidate", standing == null ? "-" : standing.name,
                 "party", standing == null ? "-" : standing.partyName,

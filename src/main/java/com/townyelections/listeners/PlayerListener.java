@@ -83,8 +83,8 @@ public class PlayerListener implements Listener {
                 election.removeCandidate(resident.getUUID());
                 elections.save();
             } else if (election.hasVoted(resident.getUUID())) {
-                // Remove their vote so tallies reflect only current residents.
-                election.getVotes().remove(resident.getUUID());
+                // Remove their ballot so tallies reflect only current residents.
+                election.removeBallot(resident.getUUID());
                 elections.save();
             }
         };

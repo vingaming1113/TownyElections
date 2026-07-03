@@ -8,7 +8,9 @@ import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
+import com.townyelections.model.InstantRunoff;
 import com.townyelections.model.TieBreaker;
+import com.townyelections.model.VotingSystem;
 import com.townyelections.util.DurationUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -273,11 +275,9 @@ public class ElectionManager {
     }
 
     private OperationResult castVote(Resident voter, Town town, Election election, Candidate candidate) {
-        if (election.getPhase() != ElectionPhase.VOTING && election.getPhase() != ElectionPhase.RUNOFF) {
-            return OperationResult.fail("vote.not-open");
-        }
-        if (!towny.isResidentOfTown(voter.getUUID(), town)) {
-            return OperationResult.fail("vote.not-eligible");
+        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        if (eligibility != null) {
+            return eligibility;
         }
         if (candidate == null) {
             return OperationResult.fail("vote.no-such-candidate");
@@ -296,6 +296,136 @@ public class ElectionManager {
         return OperationResult.ok(alreadyVoted ? "vote.changed" : "vote.cast", candidate.getName());
     }
 
+    /**
+     * Replaces the voter's full ballot from typed candidate names. Used by the
+     * vote command under RANKED_CHOICE (names in preference order) and APPROVAL
+     * (names form the approved set).
+     */
+    public OperationResult castBallot(Resident voter, Town town, List<String> candidateNames) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        if (eligibility != null) {
+            return eligibility;
+        }
+
+        List<UUID> ballot = new ArrayList<>();
+        for (String name : candidateNames) {
+            Candidate candidate = election.findCandidateByName(name);
+            if (candidate == null) {
+                return OperationResult.fail("vote.no-such-candidate", name);
+            }
+            if (!config.isAllowSelfVote() && candidate.getUuid().equals(voter.getUUID())) {
+                return OperationResult.fail("vote.cannot-self-vote");
+            }
+            if (!ballot.contains(candidate.getUuid())) {
+                ballot.add(candidate.getUuid());
+            }
+        }
+        if (ballot.isEmpty()) {
+            return OperationResult.fail("vote.usage");
+        }
+
+        boolean alreadyVoted = election.hasVoted(voter.getUUID());
+        if (alreadyVoted && !config.isAllowVoteChanges()) {
+            return OperationResult.fail("vote.already-voted");
+        }
+
+        election.castBallot(voter.getUUID(), ballot);
+        save();
+        return OperationResult.ok(alreadyVoted ? "vote.ballot-changed" : "vote.ballot-cast",
+                describeBallot(election, voter.getUUID()));
+    }
+
+    /**
+     * Adds or removes one candidate on the voter's ballot. Used by GUI clicks
+     * under RANKED_CHOICE (appends the next preference) and APPROVAL (toggles
+     * approval). Extending a ballot is always allowed; removing an entry
+     * requires vote changes to be enabled.
+     */
+    public OperationResult toggleBallotEntry(Resident voter, Town town, UUID candidateUuid) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        if (eligibility != null) {
+            return eligibility;
+        }
+        Candidate candidate = election.getCandidate(candidateUuid);
+        if (candidate == null) {
+            return OperationResult.fail("vote.no-such-candidate");
+        }
+
+        boolean ranked = election.getVotingSystem() == VotingSystem.RANKED_CHOICE;
+        List<UUID> ballot = new ArrayList<>(election.getBallot(voter.getUUID()));
+        if (ballot.contains(candidateUuid)) {
+            if (!config.isAllowVoteChanges()) {
+                return OperationResult.fail("vote.already-voted");
+            }
+            ballot.remove(candidateUuid);
+            election.castBallot(voter.getUUID(), ballot);
+            save();
+            return OperationResult.ok(ranked ? "vote.unranked" : "vote.unapproved", candidate.getName());
+        }
+
+        if (!config.isAllowSelfVote() && candidateUuid.equals(voter.getUUID())) {
+            return OperationResult.fail("vote.cannot-self-vote");
+        }
+        ballot.add(candidateUuid);
+        election.castBallot(voter.getUUID(), ballot);
+        save();
+        return OperationResult.ok(ranked ? "vote.ranked" : "vote.approved", candidate.getName());
+    }
+
+    /** Clears the voter's entire ballot (GUI button; requires vote changes). */
+    public OperationResult clearBallot(Resident voter, Town town) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        if (eligibility != null) {
+            return eligibility;
+        }
+        if (!election.hasVoted(voter.getUUID())) {
+            return OperationResult.fail("vote.nothing-to-clear");
+        }
+        if (!config.isAllowVoteChanges()) {
+            return OperationResult.fail("vote.already-voted");
+        }
+        election.removeBallot(voter.getUUID());
+        save();
+        return OperationResult.ok("vote.ballot-cleared");
+    }
+
+    /** Shared phase and residency checks; null when the voter may proceed. */
+    private OperationResult checkVoterEligibility(Resident voter, Town town, Election election) {
+        if (election.getPhase() != ElectionPhase.VOTING && election.getPhase() != ElectionPhase.RUNOFF) {
+            return OperationResult.fail("vote.not-open");
+        }
+        if (!towny.isResidentOfTown(voter.getUUID(), town)) {
+            return OperationResult.fail("vote.not-eligible");
+        }
+        return null;
+    }
+
+    /** Human-readable summary of a voter's ballot, e.g. "1. Alice, 2. Bob". */
+    public String describeBallot(Election election, UUID voter) {
+        List<UUID> ballot = election.getBallot(voter);
+        List<String> parts = new ArrayList<>();
+        boolean ranked = election.getVotingSystem() == VotingSystem.RANKED_CHOICE;
+        int rank = 1;
+        for (UUID choice : ballot) {
+            Candidate candidate = election.getCandidate(choice);
+            String name = candidate == null ? "?" : candidate.getName();
+            parts.add(ranked ? (rank++) + ". " + name : name);
+        }
+        return String.join(", ", parts);
+    }
+
     // ========================================================================
     //  Lifecycle
     // ========================================================================
@@ -310,6 +440,7 @@ public class ElectionManager {
         }
         long endsAt = System.currentTimeMillis() + config.getNominationDurationMs();
         Election election = new Election(town.getUUID(), town.getName(), ElectionPhase.NOMINATION, endsAt);
+        election.setVotingSystem(config.getVotingSystem());
         active.put(town.getUUID(), election);
         save();
 
@@ -428,7 +559,8 @@ public class ElectionManager {
                         "town", town.getName(),
                         "duration", DurationUtil.format(config.getVotingDurationMs()),
                         "label", "election",
-                        "vote", commands.literal(CommandConfig.VOTE)));
+                        "vote", commands.literal(CommandConfig.VOTE),
+                        "system", messages.raw(election.getVotingSystem().messageKey())));
     }
 
     private void maybeSendVotingReminder(Town town, Election election, long now) {
@@ -461,6 +593,11 @@ public class ElectionManager {
      * remove it from the active set.
      */
     public void concludeElection(Town town, Election election) {
+        if (election.getVotingSystem() == VotingSystem.RANKED_CHOICE) {
+            concludeRankedChoice(town, election);
+            return;
+        }
+
         Map<UUID, Integer> tally = election.tally();
         List<UUID> top = election.topCandidates();
 
@@ -477,7 +614,49 @@ public class ElectionManager {
             }
         }
 
-        recordAndReward(town, election, winner, tally);
+        recordAndReward(town, election, winner, tally, List.of(), null);
+    }
+
+    /** Runs the instant-runoff count and concludes from its outcome. */
+    private void concludeRankedChoice(Town town, Election election) {
+        InstantRunoff.Outcome outcome = election.instantRunoff();
+        List<UUID> finalists = outcome.finalists();
+
+        UUID winner = null;
+        if (!election.getCandidates().isEmpty()) {
+            if (finalists.size() == 1) {
+                winner = finalists.get(0);
+            } else if (finalists.size() > 1) {
+                winner = resolveTie(town, election, finalists);
+                if (winner == null && election.getPhase() == ElectionPhase.RUNOFF) {
+                    return;
+                }
+            }
+        }
+
+        recordAndReward(town, election, winner, outcome.finalVotes(),
+                toResultRounds(election, outcome), outcome.finishOrder());
+    }
+
+    private List<ElectionResult.Round> toResultRounds(Election election, InstantRunoff.Outcome outcome) {
+        List<ElectionResult.Round> rounds = new ArrayList<>();
+        for (InstantRunoff.Round round : outcome.rounds()) {
+            List<ElectionResult.RoundEntry> entries = new ArrayList<>();
+            round.counts().entrySet().stream()
+                    .sorted(Map.Entry.<UUID, Integer>comparingByValue().reversed())
+                    .forEach(entry -> entries.add(new ElectionResult.RoundEntry(
+                            candidateName(election, entry.getKey()), entry.getValue())));
+            List<String> eliminated = round.eliminated().stream()
+                    .map(id -> candidateName(election, id))
+                    .toList();
+            rounds.add(new ElectionResult.Round(round.number(), entries, eliminated, round.exhausted()));
+        }
+        return rounds;
+    }
+
+    private String candidateName(Election election, UUID candidateUuid) {
+        Candidate candidate = election.getCandidate(candidateUuid);
+        return candidate == null ? "?" : candidate.getName();
     }
 
     private UUID resolveTie(Town town, Election election, List<UUID> tied) {
@@ -530,9 +709,10 @@ public class ElectionManager {
                 MessageManager.placeholders("candidates", String.join(", ", names)));
     }
 
-    private void recordAndReward(Town town, Election election, UUID winnerUuid, Map<UUID, Integer> tally) {
+    private void recordAndReward(Town town, Election election, UUID winnerUuid, Map<UUID, Integer> tally,
+                                 List<ElectionResult.Round> rounds, List<UUID> finishOrder) {
         // Build the ranked standings list.
-        List<UUID> ranked = election.rankedCandidates();
+        List<UUID> ranked = finishOrder != null ? finishOrder : election.rankedCandidates();
         List<ElectionResult.Standing> standings = new ArrayList<>();
         for (UUID id : ranked) {
             Candidate c = election.getCandidate(id);
@@ -548,7 +728,7 @@ public class ElectionManager {
                 town.getUUID(), town.getName(),
                 winnerUuid, winnerCandidate == null ? null : winnerCandidate.getName(),
                 winnerVotes, election.getTotalVotes(), towny.getResidentCount(town),
-                System.currentTimeMillis(), standings);
+                System.currentTimeMillis(), standings, election.getVotingSystem(), rounds);
 
         results.put(town.getUUID(), result);
         active.remove(town.getUUID());

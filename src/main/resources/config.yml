@@ -56,6 +56,19 @@ election:
   # May candidates vote for themselves?
   allow-self-vote: true
 
+  # Electoral system used to collect and count ballots:
+  #   PLURALITY      - each voter picks one candidate; the most votes wins
+  #   RANKED_CHOICE  - voters rank candidates in order of preference
+  #                    (/election vote First Second Third ...). Counting runs
+  #                    instant-runoff rounds: the weakest candidate is
+  #                    eliminated and their ballots transfer to each voter's
+  #                    next preference until someone holds a majority.
+  #   APPROVAL       - voters approve any number of candidates
+  #                    (/election vote Alice Bob ...); most approvals wins
+  # The system is locked in when an election starts; changing this value never
+  # re-interprets the ballots of an already-running election.
+  voting-system: "PLURALITY"
+
   # Tie-breaking strategy when the top candidates are tied:
   #   RANDOM         - pick a random winner from the tied candidates
   #   EARLIEST       - the candidate who registered first wins

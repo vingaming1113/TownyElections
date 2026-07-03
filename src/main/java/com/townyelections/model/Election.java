@@ -23,12 +23,17 @@ public class Election {
 
     private ElectionPhase phase;
     private long phaseEndsAt;
+    private VotingSystem votingSystem = VotingSystem.PLURALITY;
 
     /** candidate uuid -> Candidate */
     private final Map<UUID, Candidate> candidates = new LinkedHashMap<>();
 
-    /** voter uuid -> candidate uuid they voted for */
-    private final Map<UUID, UUID> votes = new ConcurrentHashMap<>();
+    /**
+     * voter uuid -> that voter's ballot. A ballot is an ordered candidate list:
+     * a single entry under PLURALITY, a preference ranking under RANKED_CHOICE,
+     * and an unordered approval set under APPROVAL.
+     */
+    private final Map<UUID, List<UUID>> ballots = new ConcurrentHashMap<>();
 
     /** Whether a reminder for the voting phase has already been dispatched. */
     private boolean reminderSent = false;
@@ -86,6 +91,14 @@ public class Election {
         this.reminderSent = reminderSent;
     }
 
+    public VotingSystem getVotingSystem() {
+        return votingSystem;
+    }
+
+    public void setVotingSystem(VotingSystem votingSystem) {
+        this.votingSystem = votingSystem == null ? VotingSystem.PLURALITY : votingSystem;
+    }
+
     // ---- Candidates --------------------------------------------------------
 
     public Map<UUID, Candidate> getCandidates() {
@@ -114,8 +127,18 @@ public class Election {
 
     public void removeCandidate(UUID uuid) {
         candidates.remove(uuid);
-        // Void any votes that were cast for the withdrawn candidate.
-        votes.values().removeIf(uuid::equals);
+        // Strip the withdrawn candidate from every ballot; drop emptied ballots.
+        for (Map.Entry<UUID, List<UUID>> entry : ballots.entrySet()) {
+            if (entry.getValue().contains(uuid)) {
+                List<UUID> updated = new ArrayList<>(entry.getValue());
+                updated.remove(uuid);
+                if (updated.isEmpty()) {
+                    ballots.remove(entry.getKey());
+                } else {
+                    ballots.put(entry.getKey(), List.copyOf(updated));
+                }
+            }
+        }
     }
 
     /** Case-insensitive lookup of a candidate by resident name. */
@@ -131,46 +154,83 @@ public class Election {
     /** Restrict the candidate set to the provided uuids (used to begin a runoff). */
     public void retainCandidates(List<UUID> keep) {
         candidates.keySet().retainAll(keep);
-        votes.clear();
+        ballots.clear();
         reminderSent = false;
     }
 
-    // ---- Votes -------------------------------------------------------------
+    // ---- Ballots -----------------------------------------------------------
 
-    public Map<UUID, UUID> getVotes() {
-        return votes;
+    public Map<UUID, List<UUID>> getBallots() {
+        return ballots;
     }
 
     public boolean hasVoted(UUID voter) {
-        return votes.containsKey(voter);
+        return ballots.containsKey(voter);
     }
 
+    /** The voter's first (or only) choice, or null if they have not voted. */
     public UUID getVoteChoice(UUID voter) {
-        return votes.get(voter);
+        List<UUID> ballot = ballots.get(voter);
+        return ballot == null || ballot.isEmpty() ? null : ballot.get(0);
+    }
+
+    /** The voter's full ballot in cast order, or an empty list. */
+    public List<UUID> getBallot(UUID voter) {
+        return ballots.getOrDefault(voter, List.of());
     }
 
     public void castVote(UUID voter, UUID candidate) {
-        votes.put(voter, candidate);
+        castBallot(voter, List.of(candidate));
     }
 
+    /** Replaces the voter's ballot. Entries must be existing candidates, deduped, in order. */
+    public void castBallot(UUID voter, List<UUID> ballot) {
+        if (ballot == null || ballot.isEmpty()) {
+            ballots.remove(voter);
+        } else {
+            ballots.put(voter, List.copyOf(ballot));
+        }
+    }
+
+    public void removeBallot(UUID voter) {
+        ballots.remove(voter);
+    }
+
+    /** Number of ballots cast (one per voter regardless of system). */
     public int getTotalVotes() {
-        return votes.size();
+        return ballots.size();
     }
 
     public int getUniqueVoterCount() {
-        return votes.size();
+        return ballots.size();
     }
 
-    /** candidate uuid -> tally, including candidates with zero votes. */
+    /**
+     * candidate uuid -> tally, including candidates with zero votes. Under
+     * APPROVAL every approved candidate on a ballot counts; under PLURALITY and
+     * RANKED_CHOICE only the ballot's first choice counts (for ranked ballots
+     * this is the live first-preference tally, not the runoff outcome).
+     */
     public Map<UUID, Integer> tally() {
         Map<UUID, Integer> tally = new HashMap<>();
         for (UUID candidate : candidates.keySet()) {
             tally.put(candidate, 0);
         }
-        for (UUID choice : votes.values()) {
-            tally.merge(choice, 1, Integer::sum);
+        for (List<UUID> ballot : ballots.values()) {
+            if (votingSystem == VotingSystem.APPROVAL) {
+                for (UUID choice : ballot) {
+                    tally.merge(choice, 1, Integer::sum);
+                }
+            } else if (!ballot.isEmpty()) {
+                tally.merge(ballot.get(0), 1, Integer::sum);
+            }
         }
         return tally;
+    }
+
+    /** Runs the instant-runoff count over the current ballots. */
+    public InstantRunoff.Outcome instantRunoff() {
+        return InstantRunoff.count(candidates.keySet(), ballots.values());
     }
 
     /**
@@ -204,6 +264,7 @@ public class Election {
         section.set("town-name", townName);
         section.set("phase", phase.name());
         section.set("phase-ends-at", phaseEndsAt);
+        section.set("voting-system", votingSystem.name());
         section.set("reminder-sent", reminderSent);
 
         ConfigurationSection candidatesSection = section.createSection("candidates");
@@ -213,8 +274,9 @@ public class Election {
         }
 
         ConfigurationSection votesSection = section.createSection("votes");
-        for (Map.Entry<UUID, UUID> entry : votes.entrySet()) {
-            votesSection.set(entry.getKey().toString(), entry.getValue().toString());
+        for (Map.Entry<UUID, List<UUID>> entry : ballots.entrySet()) {
+            List<String> choices = entry.getValue().stream().map(UUID::toString).toList();
+            votesSection.set(entry.getKey().toString(), choices);
         }
     }
 
@@ -242,6 +304,8 @@ public class Election {
         long phaseEndsAt = section.getLong("phase-ends-at", System.currentTimeMillis());
 
         Election election = new Election(townUuid, townName, phase, phaseEndsAt);
+        election.votingSystem = VotingSystem.fromString(
+                section.getString("voting-system"), VotingSystem.PLURALITY);
         election.reminderSent = section.getBoolean("reminder-sent", false);
 
         ConfigurationSection candidatesSection = section.getConfigurationSection("candidates");
@@ -257,15 +321,31 @@ public class Election {
         ConfigurationSection votesSection = section.getConfigurationSection("votes");
         if (votesSection != null) {
             for (String key : votesSection.getKeys(false)) {
+                UUID voter;
                 try {
-                    UUID voter = UUID.fromString(key);
-                    UUID choice = UUID.fromString(votesSection.getString(key, ""));
-                    // Only keep votes for candidates that still exist.
-                    if (election.candidates.containsKey(choice)) {
-                        election.votes.put(voter, choice);
-                    }
+                    voter = UUID.fromString(key);
                 } catch (IllegalArgumentException ignored) {
-                    // Skip malformed vote entries.
+                    continue;
+                }
+                // Ballots are stored as string lists; pre-ballot data files
+                // stored a single candidate uuid string per voter.
+                List<String> rawChoices = votesSection.isList(key)
+                        ? votesSection.getStringList(key)
+                        : List.of(votesSection.getString(key, ""));
+                List<UUID> ballot = new ArrayList<>();
+                for (String rawChoice : rawChoices) {
+                    try {
+                        UUID choice = UUID.fromString(rawChoice);
+                        // Only keep votes for candidates that still exist.
+                        if (election.candidates.containsKey(choice) && !ballot.contains(choice)) {
+                            ballot.add(choice);
+                        }
+                    } catch (IllegalArgumentException ignored) {
+                        // Skip malformed vote entries.
+                    }
+                }
+                if (!ballot.isEmpty()) {
+                    election.ballots.put(voter, List.copyOf(ballot));
                 }
             }
         }

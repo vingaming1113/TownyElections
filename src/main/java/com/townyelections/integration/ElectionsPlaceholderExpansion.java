@@ -20,6 +20,7 @@ import java.util.UUID;
  * <p>Available placeholders (identifier: {@code townyelections}):
  * <ul>
  *   <li>%townyelections_phase% - current phase, or "none"</li>
+ *   <li>%townyelections_voting_system% - electoral system of the active election, or "none"</li>
  *   <li>%townyelections_time_left% - readable time until the phase ends</li>
  *   <li>%townyelections_candidates% - number of candidates</li>
  *   <li>%townyelections_votes% - number of votes cast</li>
@@ -72,6 +73,8 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
         switch (params.toLowerCase()) {
             case "phase":
                 return election == null ? "none" : election.getPhase().name().toLowerCase();
+            case "voting_system":
+                return election == null ? "none" : election.getVotingSystem().name().toLowerCase();
             case "time_left":
                 return election == null ? "0s" : DurationUtil.format(election.getMillisRemaining());
             case "candidates":

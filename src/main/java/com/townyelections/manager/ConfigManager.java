@@ -2,6 +2,7 @@ package com.townyelections.manager;
 
 import com.townyelections.TownyElections;
 import com.townyelections.model.TieBreaker;
+import com.townyelections.model.VotingSystem;
 import com.townyelections.util.DurationUtil;
 import org.bukkit.configuration.file.FileConfiguration;
 
@@ -32,6 +33,7 @@ public class ConfigManager {
     private boolean allowVoteChanges;
     private boolean publicLiveResults;
     private boolean allowSelfVote;
+    private VotingSystem votingSystem;
     private TieBreaker tieBreaker;
     private long runoffDurationMs;
     private boolean autoScheduleEnabled;
@@ -83,6 +85,7 @@ public class ConfigManager {
         allowVoteChanges = c.getBoolean("election.allow-vote-changes", true);
         publicLiveResults = c.getBoolean("election.public-live-results", false);
         allowSelfVote = c.getBoolean("election.allow-self-vote", true);
+        votingSystem = VotingSystem.fromString(c.getString("election.voting-system"), VotingSystem.PLURALITY);
         tieBreaker = TieBreaker.fromString(c.getString("election.tie-breaker"), TieBreaker.INCUMBENT);
         runoffDurationMs = DurationUtil.parseMillis(c.getString("election.runoff-duration"), days(1));
         autoScheduleEnabled = c.getBoolean("election.auto-schedule.enabled", false);
@@ -133,6 +136,7 @@ public class ConfigManager {
     public boolean isAllowVoteChanges() { return allowVoteChanges; }
     public boolean isPublicLiveResults() { return publicLiveResults; }
     public boolean isAllowSelfVote() { return allowSelfVote; }
+    public VotingSystem getVotingSystem() { return votingSystem; }
     public TieBreaker getTieBreaker() { return tieBreaker; }
     public long getRunoffDurationMs() { return runoffDurationMs; }
     public boolean isAutoScheduleEnabled() { return autoScheduleEnabled; }

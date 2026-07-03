@@ -18,7 +18,7 @@ election:
   already-active: "&cThere is already an active election in &f{town}&c."
   started-nomination: "&aAn election has begun in &f{town}&a! Nominations are open for &e{duration}&a. Use &f/{label} {run}&a to stand as a candidate."
   announce-server-start: "&6&lElection!&e An election has begun in &f{town}&e."
-  nominations-closed-voting-open: "&aNominations are closed. Voting is now open for &e{duration}&a in &f{town}&a. Use &f/{label} {vote} <candidate>&a."
+  nominations-closed-voting-open: "&aNominations are closed. Voting (&f{system}&a) is now open for &e{duration}&a in &f{town}&a. Use &f/{label} {vote} <candidate>&a."
   cancelled: "&cThe election in &f{town}&c has been cancelled. No winner was declared."
   cancelled-not-enough-candidates: "&cThe election in &f{town}&c was cancelled: only &e{count}&c candidate(s) registered (minimum &e{min}&c)."
   concluded: "&aThe election in &f{town}&a has concluded!"
@@ -28,6 +28,9 @@ election:
   phase-nomination: "&eNOMINATIONS"
   phase-voting: "&aVOTING"
   phase-runoff: "&6RUNOFF"
+  system-plurality: "&fPlurality"
+  system-ranked-choice: "&fRanked Choice"
+  system-approval: "&fApproval"
 
 candidate:
   registered: "&aYou are now a candidate in the &f{town}&a election. Good luck!"
@@ -70,11 +73,21 @@ parties:
 vote:
   cast: "&aYou voted for &f{candidate}&a."
   changed: "&aYou changed your vote to &f{candidate}&a."
+  ballot-cast: "&aYour ballot has been cast: &f{ballot}&a."
+  ballot-changed: "&aYour ballot has been updated: &f{ballot}&a."
+  ballot-cleared: "&eYour ballot has been cleared."
+  nothing-to-clear: "&cYou have not cast a ballot yet."
+  ranked: "&aYou ranked &f{candidate}&a as preference &e#{rank}&a. Ballot: &f{ballot}"
+  unranked: "&eYou removed &f{candidate}&e from your ballot. Ballot: &f{ballot}"
+  approved: "&aYou approved &f{candidate}&a. Ballot: &f{ballot}"
+  unapproved: "&eYou withdrew your approval of &f{candidate}&e. Ballot: &f{ballot}"
   already-voted: "&cYou have already voted. Vote changing is disabled."
   not-open: "&cVoting is not currently open."
   no-such-candidate: "&cThere is no candidate named &f{name}&c in this election."
   cannot-self-vote: "&cYou may not vote for yourself."
   usage: "&cUsage: &f/{label} {vote} <candidate>"
+  usage-ranked: "&cUsage: &f/{label} {vote} <first choice> [second choice] ...&c (rank candidates in order of preference)"
+  usage-approval: "&cUsage: &f/{label} {vote} <candidate> [candidate] ...&c (approve every candidate you support)"
   not-eligible: "&cOnly residents of &f{town}&c may vote in this election."
   reminder: "&eVoting in &f{town}&e closes in &f{time}&e and you have not voted yet! Use &f/{label} {vote} <candidate>&e."
 
@@ -89,6 +102,7 @@ gui:
   status-name: "&bTown Election"
   status-lore:
     - "&7Phase: &f{phase}"
+    - "&7System: &f{system}"
     - "&7Time left: &f{time}"
     - "&7Candidates: &f{candidates}"
     - "&7Votes cast: &f{votes}"
@@ -98,7 +112,8 @@ gui:
   main-candidates-lore:
     - "&7View every candidate for &f{town}&7."
     - "&7Hover a head to read their campaign message."
-    - "&7Click a head during voting to vote."
+    - "&7Click heads during voting to cast or"
+    - "&7build your ballot (&f{system}&7)."
   main-standings-name: "&bParty Standings"
   main-standings-lore:
     - "&7View party groups and candidate rosters."
@@ -166,6 +181,24 @@ gui:
   candidate-lore-closed:
     - "&7Campaign: &f{message}"
     - "&7Voting is not open right now."
+  candidate-lore-ranked:
+    - "&7Campaign: &f{message}"
+    - "&aOn your ballot as preference &e#{your_rank}&a."
+    - "&7Your ballot: &f{your_vote}"
+    - "&cClick to remove them from your ballot."
+  candidate-lore-unranked:
+    - "&7Campaign: &f{message}"
+    - "&7Your ballot: &f{your_vote}"
+    - "&aClick to rank {candidate} as your next preference."
+  candidate-lore-approved:
+    - "&7Campaign: &f{message}"
+    - "&aYou have approved {candidate}."
+    - "&7Your ballot: &f{your_vote}"
+    - "&cClick to withdraw your approval."
+  candidate-lore-unapproved:
+    - "&7Campaign: &f{message}"
+    - "&7Your ballot: &f{your_vote}"
+    - "&aClick to approve {candidate}."
   party-entry-name: "&b{party}"
   party-entry-lore-public:
     - "&7Candidates: &f{count}"
@@ -179,8 +212,13 @@ gui:
   results-summary-lore:
     - "&7Winner: &f{winner} &8[{winner_party}&8]"
     - "&7Winner votes: &f{winner_votes}"
+    - "&7System: &f{system}"
     - "&7Total votes: &f{total}"
     - "&7Turnout: &f{turnout}% &8({total}/{residents})"
+  clear-ballot-name: "&cClear My Ballot"
+  clear-ballot-lore:
+    - "&7Remove every choice from your ballot"
+    - "&7and start over."
   result-candidate-name: "&f#{rank} {candidate}"
   result-candidate-lore:
     - "&7Party: &f{party}"
@@ -191,7 +229,12 @@ gui:
 
 results:
   header: "&8&m-----&r &bElection Results &8- &f{town} &8&m-----"
+  voting-system: "&7Voting system: &f{system}"
   line: "&7 {rank}. &f{candidate} &8[{party}] &8- &e{votes}&7 vote(s) &8(&7{percent}%&8)"
+  round-header: "&8&m--&r &6Runoff Round {round} &8&m--"
+  round-line: "&8   - &f{candidate}&7: &e{votes}&7 vote(s)"
+  round-eliminated: "&8   &cEliminated: &f{candidates}"
+  round-exhausted: "&8   &7Exhausted ballots: &f{count}"
   winner: "&a&lWinner: &f{winner} &8[{party}]&a with &e{votes}&a vote(s)!"
   no-winner: "&cNo winner was declared."
   total-votes: "&7Total votes cast: &f{total}"
@@ -209,9 +252,11 @@ winner:
 status:
   header: "&8&m-----&r &bElection Status &8- &f{town} &8&m-----"
   phase: "&7Phase: &f{phase}"
+  voting-system: "&7Voting system: &f{system}"
   candidates-count: "&7Candidates: &f{count}"
   votes-count: "&7Votes cast: &f{votes}"
   your-vote: "&7Your vote: &f{choice} &8[{party}]"
+  your-ballot: "&7Your ballot: &f{ballot}"
   your-vote-none: "&7Your vote: &8(none)"
   candidate-list-header: "&7Candidates (use &f/{label} {vote} <name>&7):"
   candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message}"
@@ -231,7 +276,7 @@ help:
   campaign: "&f/{label} {campaign} <message> &8- &7Set your campaign message."
   party: "&f/{label} {party} <name> &8- &7Join or create a political party."
   parties: "&f/{label} {parties} &8- &7List current parties and standings."
-  vote: "&f/{label} {vote} <candidate> &8- &7Cast your vote."
+  vote: "&f/{label} {vote} <candidate...> &8- &7Cast your vote (list several names to rank or approve them)."
   status: "&f/{label} {status} &8- &7View the current election."
   candidates: "&f/{label} {candidates} &8- &7List candidates."
   results: "&f/{label} {results} &8- &7View the last results."

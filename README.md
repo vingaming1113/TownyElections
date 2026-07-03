@@ -28,6 +28,11 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
   click-driven election desk, inspect candidates, and vote from player-head icons.
 - **Voting** — one command to cast (and optionally change) a vote, with eligibility
   restricted to town residents. Supports secret ballots (hidden tallies).
+- **Three electoral systems** — classic **plurality**, **ranked-choice**
+  (instant-runoff with automatic elimination rounds and round-by-round results),
+  and **approval voting**, selected with `election.voting-system`. Ballots,
+  commands, tab completion, the GUI, results, and persistence all adapt to the
+  chosen system.
 - **Automatic winner rewards** — grants configurable Towny **town ranks**, optionally
   transfers **mayorship**, runs custom console commands, and can revoke the previous
   holder's ranks.
@@ -85,7 +90,7 @@ literal below is **configurable** in `config.yml` under the `commands:` section.
 | `/election campaign <message>`  | `townyelections.candidate`| Set your campaign message.           |
 | `/election party <name>`       | `townyelections.candidate`| Join or create a political party.    |
 | `/election parties`            | `townyelections.info`     | List current parties and standings.  |
-| `/election vote <candidate>`    | `townyelections.vote`     | Cast (or change) your vote.          |
+| `/election vote <candidate...>` | `townyelections.vote`     | Cast (or change) your vote or ballot. |
 | `/election status`              | `townyelections.info`     | View the current election.           |
 | `/election candidates`          | `townyelections.info`     | List candidates, parties & campaigns. |
 | `/election results`             | `townyelections.info`     | View the last concluded results.     |
@@ -103,11 +108,15 @@ shows the current phase, remaining time, candidate count, vote count, your curre
 vote, and one-page access to the candidate ballot, party standings, last results,
 candidacy tools, and admin controls when the player has `townyelections.admin`.
 
-The candidate roster uses player heads as vote buttons. Hovering a candidate head
-shows their party, campaign message, and visible vote data when live results are
-enabled. Campaign messages and party names can be set from the menu by clicking
-the matching item and typing the new value in chat; the plugin consumes that one
-chat message and applies the normal validation.
+The candidate roster uses player heads as vote buttons. Under plurality a click
+casts your vote; under ranked choice each click adds that candidate as your next
+preference (heads show your current rank and full ballot); under approval each
+click toggles your approval. A clear-ballot button resets ranked or approval
+ballots. Hovering a candidate head shows their party, campaign message, and
+visible vote data when live results are enabled. Campaign messages and party
+names can be set from the menu by clicking the matching item and typing the new
+value in chat; the plugin consumes that one chat message and applies the normal
+validation.
 
 The GUI still enforces the same permissions, Towny residency checks, voting phase
 checks, self-vote setting, vote-change setting, campaign limits, and party limits
@@ -136,6 +145,50 @@ Party Results - Oakvale
  - Reform Coalition (18 votes, 2 candidates) Alex, Mira
  - Independent (7 votes, 1 candidate) Rowan
 ```
+
+### Voting systems
+
+`election.voting-system` in `config.yml` selects how ballots are collected and
+counted. The system is locked in when an election starts, so a config change
+never re-interprets the ballots of a running election.
+
+| System          | Ballot                                   | Count                                   |
+|-----------------|------------------------------------------|-----------------------------------------|
+| `PLURALITY`     | One candidate.                           | Most votes wins (default, classic).      |
+| `RANKED_CHOICE` | Candidates in order of preference.       | Instant-runoff elimination rounds.       |
+| `APPROVAL`      | Every candidate the voter approves of.   | Most approvals wins.                     |
+
+With **ranked choice**, `/election vote Alex Mira Rowan` ranks Alex first,
+Mira second, Rowan third. Counting eliminates the weakest candidate each round
+and transfers their ballots to each voter's next surviving preference until a
+candidate holds a majority of the continuing ballots. Every round (tallies,
+eliminations, and exhausted ballots) is recorded and shown in
+`/election results`:
+
+```text
+Runoff Round 1
+   - Alex: 4 vote(s)
+   - Mira: 3 vote(s)
+   - Rowan: 2 vote(s)
+   Eliminated: Rowan
+Runoff Round 2
+   - Mira: 5 vote(s)
+   - Alex: 4 vote(s)
+```
+
+With **approval**, `/election vote Alex Mira` approves both candidates; list as
+many as you support.
+
+In the GUI, plurality clicks vote directly, while ranked-choice and approval
+clicks build the ballot: each click adds the candidate as your next preference
+(or approves them), clicking again removes them, and a bucket button clears the
+whole ballot. Adding to a ballot is always allowed; removing or clearing
+entries requires `allow-vote-changes: true`. Live first-preference and approval
+tallies follow your `public-live-results` setting, exactly like plurality.
+
+If the final count ends in a dead heat, your configured `tie-breaker`
+(`RANDOM`, `EARLIEST`, `INCUMBENT`, `RUNOFF`, or `NONE`) resolves it under
+every system.
 
 ### Permissions
 
@@ -187,6 +240,7 @@ election:
   auto-win-single-candidate: true
   allow-vote-changes: true
   public-live-results: false   # false = secret ballot
+  voting-system: "PLURALITY"   # PLURALITY | RANKED_CHOICE | APPROVAL
   tie-breaker: "INCUMBENT"     # RANDOM | EARLIEST | INCUMBENT | RUNOFF | NONE
   auto-schedule:
     enabled: false
@@ -206,6 +260,7 @@ If PlaceholderAPI is installed, these placeholders are available (identifier
 | Placeholder                         | Description                          |
 |-------------------------------------|--------------------------------------|
 | `%townyelections_phase%`            | Current phase, or `none`.            |
+| `%townyelections_voting_system%`    | Active election's system, or `none`. |
 | `%townyelections_time_left%`        | Time until the current phase ends.   |
 | `%townyelections_candidates%`       | Number of candidates.                |
 | `%townyelections_votes%`            | Number of votes cast.                |
@@ -223,10 +278,12 @@ If PlaceholderAPI is installed, these placeholders are available (identifier
 2. **Nomination phase**: residents `/election run`, set campaign messages, and choose parties.
 3. When nominations end, if there are enough candidates the **voting phase** opens
    (otherwise the election is cancelled, or a lone candidate may auto-win).
-4. Residents `/election vote <candidate>`. A reminder is sent to non-voters before
-   voting closes.
-5. When voting ends, votes are tallied, ties are resolved per your strategy, the
-   result is recorded, and the winner's rewards are applied through Towny.
+4. Residents `/election vote <candidate...>` (one name under plurality, several
+   to rank or approve). A reminder is sent to non-voters before voting closes.
+5. When voting ends, ballots are counted under the election's voting system
+   (including instant-runoff rounds for ranked choice), ties are resolved per
+   your strategy, the result is recorded, and the winner's rewards are applied
+   through Towny.
 
 State is checked once per second and persisted to `data.yml`, so elections resume
 correctly across restarts.
