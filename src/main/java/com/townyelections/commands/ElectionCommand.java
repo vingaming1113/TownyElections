@@ -78,6 +78,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             case CommandConfig.RUN -> handleRun(sender);
             case CommandConfig.WITHDRAW -> handleWithdraw(sender);
             case CommandConfig.CAMPAIGN -> handleCampaign(sender, rest, label);
+            case CommandConfig.PROFILE -> handleProfile(sender, rest, label);
             case CommandConfig.PARTY -> handleParty(sender, rest, label);
             case CommandConfig.PARTIES -> handleParties(sender);
             case CommandConfig.VOTE -> handleVote(sender, rest, label);
@@ -164,6 +165,36 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         String message = String.join(" ", rest);
         respond(sender, elections.setCampaignMessage(ctx.resident(), ctx.town(), message),
                 MessageManager.placeholders("max", String.valueOf(config.getMaxMessageLength())));
+    }
+
+    private void handleProfile(CommandSender sender, String[] rest, String label) {
+        if (!sender.hasPermission("townyelections.candidate")) {
+            messages.send(sender, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContext(sender);
+        if (ctx == null) {
+            return;
+        }
+        Election election = elections.getElection(ctx.town());
+        Candidate candidate = election == null ? null : election.getCandidate(ctx.resident().getUUID());
+        if (candidate == null) {
+            messages.send(sender, "candidate.not-a-candidate");
+            return;
+        }
+        if (rest.length == 0) {
+            messages.sendNoPrefix(sender, "profile.header",
+                    MessageManager.placeholders("candidate", candidate.getName()));
+            messages.sendNoPrefix(sender, "profile.body", MessageManager.placeholders(
+                    "profile", displayProfile(candidate)));
+            messages.sendNoPrefix(sender, "profile.usage", MessageManager.placeholders(
+                    "label", label,
+                    "profile", commands.literal(CommandConfig.PROFILE)));
+            return;
+        }
+        String profile = String.join(" ", rest);
+        respond(sender, elections.setCandidateProfile(ctx.resident(), ctx.town(), profile),
+                MessageManager.placeholders("max", String.valueOf(config.getMaxProfileLength())));
     }
 
     private void handleParty(CommandSender sender, String[] rest, String label) {
@@ -375,12 +406,14 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                         "candidate", c.getName(),
                         "party", c.getPartyName(),
                         "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0)),
-                        "message", c.getCampaignMessage()));
+                        "message", c.getCampaignMessage(),
+                        "profile", displayProfile(c)));
             } else {
                 messages.sendNoPrefix(sender, "status.candidate-entry-hidden", MessageManager.placeholders(
                         "candidate", c.getName(),
                         "party", c.getPartyName(),
-                        "message", c.getCampaignMessage()));
+                        "message", c.getCampaignMessage(),
+                        "profile", displayProfile(c)));
             }
         }
     }
@@ -638,6 +671,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 "run", commands.literal(CommandConfig.RUN),
                 "withdraw", commands.literal(CommandConfig.WITHDRAW),
                 "campaign", commands.literal(CommandConfig.CAMPAIGN),
+                "profile", commands.literal(CommandConfig.PROFILE),
                 "party", commands.literal(CommandConfig.PARTY),
                 "parties", commands.literal(CommandConfig.PARTIES),
                 "vote", commands.literal(CommandConfig.VOTE),
@@ -653,6 +687,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.sendNoPrefix(sender, "help.run", base);
         messages.sendNoPrefix(sender, "help.withdraw", base);
         messages.sendNoPrefix(sender, "help.campaign", base);
+        messages.sendNoPrefix(sender, "help.profile", base);
         messages.sendNoPrefix(sender, "help.party", base);
         messages.sendNoPrefix(sender, "help.parties", base);
         messages.sendNoPrefix(sender, "help.vote", base);
@@ -734,6 +769,11 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             }
         }
         return out;
+    }
+
+    private String displayProfile(Candidate candidate) {
+        String profile = candidate.getProfile();
+        return profile == null || profile.isBlank() ? messages.raw("profile.none") : profile;
     }
 
     private boolean isAdminAction(String action) {

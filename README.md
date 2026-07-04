@@ -88,6 +88,7 @@ literal below is **configurable** in `config.yml` under the `commands:` section.
 | `/election run`                 | `townyelections.candidate`| Stand as a candidate.                |
 | `/election withdraw`            | `townyelections.candidate`| Withdraw from the race.              |
 | `/election campaign <message>`  | `townyelections.candidate`| Set your campaign message.           |
+| `/election profile <profile>`   | `townyelections.candidate`| Set your candidate profile/bio.      |
 | `/election party <name>`       | `townyelections.candidate`| Join or create a political party.    |
 | `/election parties`            | `townyelections.info`     | List current parties and standings.  |
 | `/election vote <candidate...>` | `townyelections.vote`     | Cast (or change) your vote or ballot. |
@@ -229,7 +230,7 @@ console warning. Command placeholders: `{winner}`, `{winner_uuid}`, `{town}`,
 ## Configuration highlights
 
 Durations accept friendly strings like `30s`, `10m`, `2h`, `3d`, `1w`, or
-combinations such as `1w3d12h`. Candidates can join an existing party or create a new party label with `/election party <name>`; tab completion suggests current parties. Party standings are available with `/election parties`, and final results include party-level vote totals plus winner command placeholders.
+combinations such as `1w3d12h`. Candidates can set a short campaign message and a longer candidate profile/bio for voters to read. Candidates can join an existing party or create a new party label with `/election party <name>`; tab completion suggests current parties. Party standings are available with `/election parties`, and final results include party-level vote totals plus winner command placeholders.
 
 ```yaml
 election:

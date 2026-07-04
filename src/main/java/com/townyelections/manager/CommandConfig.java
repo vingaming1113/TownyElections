@@ -18,6 +18,7 @@ public class CommandConfig {
     public static final String RUN = "run";
     public static final String WITHDRAW = "withdraw";
     public static final String CAMPAIGN = "campaign";
+    public static final String PROFILE = "profile";
     public static final String PARTY = "party";
     public static final String PARTIES = "parties";
     public static final String VOTE = "vote";
@@ -31,7 +32,7 @@ public class CommandConfig {
     public static final String HELP = "help";
 
     private static final String[] ACTIONS = {
-            RUN, WITHDRAW, CAMPAIGN, PARTY, PARTIES, VOTE, STATUS, CANDIDATES,
+            RUN, WITHDRAW, CAMPAIGN, PROFILE, PARTY, PARTIES, VOTE, STATUS, CANDIDATES,
             RESULTS, START, STOP, CANCEL, RELOAD, HELP
     };
 

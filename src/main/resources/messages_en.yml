@@ -51,6 +51,16 @@ campaign:
   header: "&8&m----&r &bCampaign: &f{candidate} &8&m----"
   body: "&7{message}"
 
+profile:
+  set: "&aYour candidate profile has been set."
+  too-long: "&cYour candidate profile is too long (max &e{max}&c characters)."
+  blocked: "&cYour candidate profile contains disallowed content."
+  empty: "&cUsage: &f/{label} {profile} <profile>"
+  none: "&8(no profile set)"
+  header: "&8&m----&r &bProfile: &f{candidate} &8&m----"
+  body: "&7{profile}"
+  usage: "&7Set it with &f/{label} {profile} <profile>&7."
+
 party:
   set: "&aYour political party has been set to &f{party}&a."
   current: "&7Your current political party is &f{party}&7. Use &f/{label} {party_command} <name>&7 to change it, or &f/{label} {party_command} leave&7 to become independent."
@@ -259,8 +269,8 @@ status:
   your-ballot: "&7Your ballot: &f{ballot}"
   your-vote-none: "&7Your vote: &8(none)"
   candidate-list-header: "&7Candidates (use &f/{label} {vote} <name>&7):"
-  candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message}"
-  candidate-entry-hidden: "&8 - &f{candidate} &8[{party}] &7{message}"
+  candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message} &8| &7{profile}"
+  candidate-entry-hidden: "&8 - &f{candidate} &8[{party}] &7{message} &8| &7{profile}"
 
 admin:
   started: "&aYou started an election in &f{town}&a."
@@ -274,6 +284,7 @@ help:
   run: "&f/{label} {run} &8- &7Stand as a candidate."
   withdraw: "&f/{label} {withdraw} &8- &7Withdraw from the race."
   campaign: "&f/{label} {campaign} <message> &8- &7Set your campaign message."
+  profile: "&f/{label} {profile} <profile> &8- &7Set your candidate profile."
   party: "&f/{label} {party} <name> &8- &7Join or create a political party."
   parties: "&f/{label} {parties} &8- &7List current parties and standings."
   vote: "&f/{label} {vote} <candidate...> &8- &7Cast your vote (list several names to rank or approve them)."

@@ -156,6 +156,33 @@ public class ElectionManager {
         return OperationResult.ok("campaign.set");
     }
 
+    /** Set the resident's candidate profile. Returns the outcome. */
+    public OperationResult setCandidateProfile(Resident resident, Town town, String profile) {
+        Election election = active.get(town.getUUID());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        Candidate candidate = election.getCandidate(resident.getUUID());
+        if (candidate == null) {
+            return OperationResult.fail("candidate.not-a-candidate");
+        }
+        if (profile == null || profile.isBlank()) {
+            return OperationResult.fail("profile.empty");
+        }
+        if (profile.length() > config.getMaxProfileLength()) {
+            return OperationResult.fail("profile.too-long");
+        }
+        String lower = profile.toLowerCase(Locale.ROOT);
+        for (String blocked : config.getBlockedWords()) {
+            if (!blocked.isBlank() && lower.contains(blocked.toLowerCase(Locale.ROOT))) {
+                return OperationResult.fail("profile.blocked");
+            }
+        }
+        candidate.setProfile(profile);
+        save();
+        return OperationResult.ok("profile.set");
+    }
+
     public OperationResult leaveParty(Resident resident, Town town) {
         Election election = active.get(town.getUUID());
         if (election == null) {

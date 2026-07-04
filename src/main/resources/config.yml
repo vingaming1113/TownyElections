@@ -102,6 +102,10 @@ election:
 campaign:
   # Maximum length (characters) of a candidate's campaign message.
   max-message-length: 128
+  # Maximum length (characters) of a candidate's profile/bio.
+  # Profiles are longer than campaign messages and are shown in candidate lists
+  # and the election GUI so voters can learn what a candidate is about.
+  max-profile-length: 256
   # Default campaign message used when a candidate sets none.
   default-message: "I would be honored to serve this town."
   # Maximum length (characters) of a party name typed with /election party.
@@ -167,6 +171,7 @@ commands:
   run: "run"          # register as a candidate
   withdraw: "withdraw"  # drop out of the race
   campaign: "campaign"  # set your campaign message
+  profile: "profile"    # set your candidate profile/bio
   party: "party"        # join, create, leave, or admin-rename a party
   parties: "parties"  # list current party standings
   vote: "vote"          # cast a vote

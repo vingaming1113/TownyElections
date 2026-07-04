@@ -43,6 +43,7 @@ public class ConfigManager {
 
     // campaign
     private int maxMessageLength;
+    private int maxProfileLength;
     private String defaultCampaignMessage;
     private int maxPartyNameLength;
     private String defaultPartyName;
@@ -94,6 +95,7 @@ public class ConfigManager {
         winnerReward = c.getDouble("election.economy.winner-reward", 0.0);
 
         maxMessageLength = Math.max(1, c.getInt("campaign.max-message-length", 128));
+        maxProfileLength = Math.max(1, c.getInt("campaign.max-profile-length", 256));
         defaultCampaignMessage = c.getString("campaign.default-message", "I would be honored to serve this town.");
         maxPartyNameLength = Math.max(1, c.getInt("campaign.max-party-name-length", 32));
         defaultPartyName = c.getString("campaign.default-party-name", "Independent");
@@ -145,6 +147,7 @@ public class ConfigManager {
     public double getWinnerReward() { return winnerReward; }
 
     public int getMaxMessageLength() { return maxMessageLength; }
+    public int getMaxProfileLength() { return maxProfileLength; }
     public String getDefaultCampaignMessage() { return defaultCampaignMessage; }
     public int getMaxPartyNameLength() { return maxPartyNameLength; }
     public String getDefaultPartyName() { return defaultPartyName; }
