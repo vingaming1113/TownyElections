@@ -83,10 +83,10 @@ election:
   # Automatically start a new election in every eligible town on a fixed cadence.
   # Set enabled to false to only run elections started manually via commands.
   auto-schedule:
-    enabled: false
+    enabled: true
     # Cadence between the *end* of one election and the automatic start of the
     # next (per town). Example: 30d for a monthly cycle.
-    interval: "30d"
+    interval: "14d"
 
   # If true, the town's economy account is charged/rewards handled (requires an
   # economy). Purely optional flavour.
