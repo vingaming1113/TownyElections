@@ -113,10 +113,10 @@ The candidate roster uses player heads as vote buttons. Under plurality a click
 casts your vote; under ranked choice each click adds that candidate as your next
 preference (heads show your current rank and full ballot); under approval each
 click toggles your approval. A clear-ballot button resets ranked or approval
-ballots. Hovering a candidate head shows their party, campaign message, and
-visible vote data when live results are enabled. Campaign messages and party
-names can be set from the menu by clicking the matching item and typing the new
-value in chat; the plugin consumes that one chat message and applies the normal
+ballots. Hovering a candidate head shows their party, campaign message, candidate
+profile, and visible vote data when live results are enabled. Campaign messages,
+candidate profiles, and party names can be set from the menu by clicking the
+matching item and typing the new value in chat; the plugin consumes that one chat message and applies the normal
 validation.
 
 The GUI still enforces the same permissions, Towny residency checks, voting phase

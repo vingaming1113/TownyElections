@@ -100,7 +100,9 @@ public class ElectionMenu implements Listener {
                 "gui.main-campaign-name", "gui.main-campaign-lore", menuPlaceholders);
         addAction(inventory, holder, 24, ElectionMenuAction.SET_PARTY, Material.BLUE_BANNER,
                 "gui.main-party-name", "gui.main-party-lore", menuPlaceholders);
-        addAction(inventory, holder, 30, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
+        addAction(inventory, holder, 30, ElectionMenuAction.SET_PROFILE, Material.BOOK,
+                "gui.main-profile-name", "gui.main-profile-lore", menuPlaceholders);
+        addAction(inventory, holder, 32, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
                 "gui.main-leave-party-name", "gui.main-leave-party-lore", menuPlaceholders);
 
         if (player.hasPermission("townyelections.admin")) {
@@ -303,6 +305,7 @@ public class ElectionMenu implements Listener {
             case RUN -> handleRun(player, holder.getTownUuid());
             case WITHDRAW -> handleWithdraw(player, holder.getTownUuid());
             case SET_CAMPAIGN -> beginTextInput(player, holder.getTownUuid(), PendingInputType.CAMPAIGN);
+            case SET_PROFILE -> beginTextInput(player, holder.getTownUuid(), PendingInputType.PROFILE);
             case SET_PARTY -> beginTextInput(player, holder.getTownUuid(), PendingInputType.PARTY);
             case LEAVE_PARTY -> handleLeaveParty(player, holder.getTownUuid());
             case CLEAR_BALLOT -> handleClearBallot(player, holder);
@@ -518,9 +521,10 @@ public class ElectionMenu implements Listener {
         }
         pendingInputs.put(player.getUniqueId(), new PendingInput(type, townUuid));
         player.closeInventory();
-        messages.send(player, type == PendingInputType.CAMPAIGN ? "gui.campaign-prompt" : "gui.party-prompt",
+        messages.send(player, promptKey(type),
                 MessageManager.placeholders(
                         "max_campaign", String.valueOf(config.getMaxMessageLength()),
+                        "max_profile", String.valueOf(config.getMaxProfileLength()),
                         "max_party", String.valueOf(config.getMaxPartyNameLength())));
     }
 
@@ -537,6 +541,9 @@ public class ElectionMenu implements Listener {
         if (pending.type() == PendingInputType.CAMPAIGN) {
             respond(player, elections.setCampaignMessage(ctx.resident(), ctx.town(), input),
                     MessageManager.placeholders("max", String.valueOf(config.getMaxMessageLength())));
+        } else if (pending.type() == PendingInputType.PROFILE) {
+            respond(player, elections.setCandidateProfile(ctx.resident(), ctx.town(), input),
+                    MessageManager.placeholders("max", String.valueOf(config.getMaxProfileLength())));
         } else {
             respond(player, elections.setPartyName(ctx.resident(), ctx.town(), input), MessageManager.placeholders(
                     "party", input.trim(),
@@ -789,6 +796,7 @@ public class ElectionMenu implements Listener {
         Candidate viewerCandidate = election == null || viewer == null ? null : election.getCandidate(viewer.getUUID());
         String yourParty = viewerCandidate == null ? "-" : viewerCandidate.getPartyName();
         String yourCampaign = viewerCandidate == null ? "-" : viewerCandidate.getCampaignMessage();
+        String yourProfile = viewerCandidate == null ? "-" : displayProfile(viewerCandidate);
         String voted = messages.raw("gui.vote-none");
         if (election != null && viewer != null && election.hasVoted(viewer.getUUID())) {
             voted = elections.describeBallot(election, viewer.getUUID());
@@ -813,10 +821,12 @@ public class ElectionMenu implements Listener {
                 "party", party,
                 "candidate_votes", String.valueOf(votes),
                 "message", candidate == null ? "-" : candidate.getCampaignMessage(),
+                "profile", candidate == null ? "-" : displayProfile(candidate),
                 "your_vote", voted,
                 "your_rank", yourRank,
                 "your_party", yourParty,
                 "your_campaign", yourCampaign,
+                "your_profile", yourProfile,
                 "default_party", config.getDefaultPartyName());
     }
 
@@ -847,6 +857,19 @@ public class ElectionMenu implements Listener {
                 "turnout", String.valueOf(turnout));
     }
 
+    private String promptKey(PendingInputType type) {
+        return switch (type) {
+            case CAMPAIGN -> "gui.campaign-prompt";
+            case PROFILE -> "gui.profile-prompt";
+            case PARTY -> "gui.party-prompt";
+        };
+    }
+
+    private String displayProfile(Candidate candidate) {
+        String profile = candidate.getProfile();
+        return profile == null || profile.isBlank() ? messages.raw("profile.none") : profile;
+    }
+
     private String candidateName(Town town, UUID candidateUuid) {
         Election election = elections.getElection(town);
         Candidate candidate = election == null ? null : election.getCandidate(candidateUuid);
@@ -859,6 +882,7 @@ public class ElectionMenu implements Listener {
 
     private enum PendingInputType {
         CAMPAIGN,
+        PROFILE,
         PARTY
     }
 

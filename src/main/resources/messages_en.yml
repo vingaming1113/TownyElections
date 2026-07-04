@@ -121,7 +121,8 @@ gui:
   main-candidates-name: "&aCandidate Ballot"
   main-candidates-lore:
     - "&7View every candidate for &f{town}&7."
-    - "&7Hover a head to read their campaign message."
+    - "&7Hover a head to read their campaign"
+    - "&7message and profile."
     - "&7Click heads during voting to cast or"
     - "&7build your ballot (&f{system}&7)."
   main-standings-name: "&bParty Standings"
@@ -144,6 +145,10 @@ gui:
   main-campaign-lore:
     - "&7Current: &f{your_campaign}"
     - "&7Click, then type the new message in chat."
+  main-profile-name: "&dSet Candidate Profile"
+  main-profile-lore:
+    - "&7Current: &f{your_profile}"
+    - "&7Click, then type your profile in chat."
   main-party-name: "&9Set Party"
   main-party-lore:
     - "&7Current: &f{your_party}"
@@ -182,31 +187,38 @@ gui:
   candidate-name: "&f{candidate} &8[&b{party}&8]"
   candidate-lore-secret:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&7Live vote totals are hidden."
     - "&aClick to vote for {candidate}."
   candidate-lore-public:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&7Votes: &f{candidate_votes}"
     - "&aClick to vote for {candidate}."
   candidate-lore-closed:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&7Voting is not open right now."
   candidate-lore-ranked:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&aOn your ballot as preference &e#{your_rank}&a."
     - "&7Your ballot: &f{your_vote}"
     - "&cClick to remove them from your ballot."
   candidate-lore-unranked:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&7Your ballot: &f{your_vote}"
     - "&aClick to rank {candidate} as your next preference."
   candidate-lore-approved:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&aYou have approved {candidate}."
     - "&7Your ballot: &f{your_vote}"
     - "&cClick to withdraw your approval."
   candidate-lore-unapproved:
     - "&7Campaign: &f{message}"
+    - "&7Profile: &f{profile}"
     - "&7Your ballot: &f{your_vote}"
     - "&aClick to approve {candidate}."
   party-entry-name: "&b{party}"
@@ -234,6 +246,7 @@ gui:
     - "&7Party: &f{party}"
     - "&7Votes: &f{candidate_votes} &8(&7{percent}%&8)"
   campaign-prompt: "&eType your new campaign message in chat &7(max {max_campaign} chars)&e, or type &fcancel&e."
+  profile-prompt: "&eType your candidate profile in chat &7(max {max_profile} chars)&e, or type &fcancel&e."
   party-prompt: "&eType your party name in chat &7(max {max_party} chars)&e, or type &fcancel&e."
   input-cancelled: "&7Cancelled menu text input."
 
