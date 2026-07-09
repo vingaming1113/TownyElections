@@ -120,23 +120,23 @@ your server's `plugins/` folder alongside Towny.
 The root command is `/election` (aliases: `/elec`, `/te`). Every sub-command
 literal below is **configurable** in `config.yml` under the `commands:` section.
 
-| Command                         | Permission                | Description                          |
-|---------------------------------|---------------------------|--------------------------------------|
-| `/election`                     | Town resident             | Open the election GUI.               |
-| `/election run`                 | `townyelections.candidate`| Stand as a candidate.                |
-| `/election withdraw`            | `townyelections.candidate`| Withdraw from the race.              |
-| `/election campaign <message>`  | `townyelections.candidate`| Set your campaign message.           |
-| `/election profile <profile>`   | `townyelections.candidate`| Set your candidate profile/bio.      |
-| `/election party <name>`       | `townyelections.candidate`| Join or create a political party.    |
-| `/election parties`            | `townyelections.info`     | List current parties and standings.  |
-| `/election vote <candidate...>` | `townyelections.vote`     | Cast (or change) your vote or ballot. |
-| `/election status`              | `townyelections.info`     | View the current election.           |
-| `/election candidates`          | `townyelections.info`     | List candidates, parties & campaigns. |
-| `/election results`             | `townyelections.info`     | View the last concluded results.     |
-| `/election start [town]`        | `townyelections.admin`    | Start an election.                   |
-| `/election stop [town]`         | `townyelections.admin`    | End voting early and tally.          |
-| `/election cancel [town]`       | `townyelections.admin`    | Cancel with no winner.               |
-| `/election reload`              | `townyelections.admin`    | Reload configuration.                |
+| Command | Permission | What it does! 🎉 |
+|---------|------------|------------------|
+| `/election` 🎪 | Town resident | **OPEN THE MAGIC BOX!** 📦 Click and see all the election stuff! |
+| `/election run` 🏃‍♂️ | `townyelections.candidate`| **I WANNA BE THE BOSS!** 👑 Sign up to run for office! |
+| `/election withdraw` 🚪 | `townyelections.candidate`| **NEVER MIND!** 🛑 Back out of the race - no problem! |
+| `/election campaign <message>` 📢 | `townyelections.candidate`| **TALK TO PEOPLE!** 🗣️ Tell everyone why they should vote for YOU! |
+| `/election profile <profile>` 📝 | `townyelections.candidate`| **TELL YOUR STORY!** 📖 Write about yourself so people like you! |
+| `/election party <name>` 🎭 | `townyelections.candidate`| **JOIN A TEAM!** 👥 Pick a group to be part of! |
+| `/election parties` 🏛️ | `townyelections.info` | **TEAMS SCORECARD!** 📊 See all the teams and how many votes they got! |
+| `/election vote <candidate...>` ✅ | `townyelections.vote` | **PICK A WINNER!** 🗳️ Choose who you want to be the boss! |
+| `/election status` 📋 | `townyelections.info` | **WHAT'S HAPPENING NOW?** ⏰ Check how much time is left! |
+| `/election candidates` 👨‍👩‍👧‍👦 | `townyelections.info` | **WHO'S RUNNING?** 🎯 See all the people trying to be boss! |
+| `/election results` 🏆 | `townyelections.info` | **WHO WON?** 🎊 See the final scores and the WINNER! |
+| `/election start [town]` ▶️ | `townyelections.admin` | **LET'S GO!** 🚀 Start a brand new election! |
+| `/election stop [town]` ⏸️ | `townyelections.admin` | **STOP!** 🛑 End voting and count votes RIGHT NOW! |
+| `/election cancel [town]` ❌ | `townyelections.admin` | **OOPS!** 💨 Cancel everything - no winner this time! |
+| `/election reload` 🔄 | `townyelections.admin` | **REFRESH!** ♻️ Reload all the settings from config! |
 
 Admins may target another town by name; otherwise the sender's own town is used.
 
@@ -268,7 +268,7 @@ console warning. Command placeholders: `{winner}`, `{winner_uuid}`, `{town}`,
 ## Configuration highlights
 
 Durations accept friendly strings like `30s`, `10m`, `2h`, `3d`, `1w`, or
-combinations such as `1w3d12h`. Candidates can set a short campaign message and a longer candidate profile/bio for voters to read. Candidates can join an existing party or create a new party label with `/election party <name>`; tab completion suggests current parties. Party standings are available with `/election parties`, and final results include party-level vote totals plus winner command placeholders.
+combinations such as `1w3d12h`. Candidates can set a short campaign message and a longer candidate profile/bio for voters to read. Candidates can join an existing party or create a new party labe[...]
 
 ```yaml
 election:
