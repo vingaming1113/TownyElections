@@ -4,6 +4,7 @@ import com.townyelections.commands.ElectionCommand;
 import com.townyelections.gui.ElectionMenu;
 import com.townyelections.integration.ElectionsPlaceholderExpansion;
 import com.townyelections.integration.TownyHook;
+import com.townyelections.legends.ElectionOfLegendsManager;
 import com.townyelections.listeners.PlayerListener;
 import com.townyelections.manager.CommandConfig;
 import com.townyelections.manager.ConfigManager;
@@ -31,6 +32,7 @@ public class TownyElections extends JavaPlugin {
     private TownyHook townyHook;
     private ElectionManager electionManager;
     private ElectionMenu electionMenu;
+    private ElectionOfLegendsManager legendsManager;
 
     private BukkitTask tickTask;
 
@@ -88,6 +90,10 @@ public class TownyElections extends JavaPlugin {
             }
         }, 100L, 20L);
 
+        // Election of Legends (reality-warping event system).
+        legendsManager = new ElectionOfLegendsManager(this);
+        legendsManager.load();
+
         // Optional integrations.
         hookPlaceholderAPI();
         setupMetrics();
@@ -100,6 +106,9 @@ public class TownyElections extends JavaPlugin {
     public void onDisable() {
         if (tickTask != null) {
             tickTask.cancel();
+        }
+        if (legendsManager != null) {
+            legendsManager.shutdown();
         }
         if (electionManager != null) {
             electionManager.save();
@@ -163,5 +172,9 @@ public class TownyElections extends JavaPlugin {
 
     public ElectionMenu getElectionMenu() {
         return electionMenu;
+    }
+
+    public ElectionOfLegendsManager getLegendsManager() {
+        return legendsManager;
     }
 }

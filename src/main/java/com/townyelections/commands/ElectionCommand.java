@@ -4,6 +4,11 @@ import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
 import com.townyelections.integration.TownyHook;
+import com.townyelections.legends.ElectionOfLegendsManager;
+import com.townyelections.legends.Ideology;
+import com.townyelections.legends.system.AIPredictionEngine;
+import com.townyelections.legends.system.SentimentAnalyzer;
+import com.townyelections.legends.system.TemporalSimulator;
 import com.townyelections.manager.CommandConfig;
 import com.townyelections.manager.ConfigManager;
 import com.townyelections.manager.ElectionManager;
@@ -62,6 +67,15 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 return true;
             }
             sendHelp(sender, label);
+            return true;
+        }
+
+        // ---- Election of Legends subcommands (bypass configurable literals) ----
+        if (args[0].equalsIgnoreCase("legends")) {
+            String[] rest = Arrays.copyOfRange(args, 1, args.length);
+            String subAction = rest.length > 0 ? rest[0] : "status";
+            String[] subRest = rest.length > 1 ? Arrays.copyOfRange(rest, 1, rest.length) : new String[0];
+            handleLegendsCommand(sender, subAction, subRest, label);
             return true;
         }
 
@@ -659,6 +673,275 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.send(sender, "general.reloaded");
     }
 
+    // ---- Election of Legends -----------------------------------------------
+
+    private void handleLegendsCommand(CommandSender sender, String subAction, String[] rest, String label) {
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        if (legends == null || !legends.getConfig().isEnabled()) {
+            messages.send(sender, "general.unknown-command", MessageManager.placeholders(
+                    "label", label, "help", "help"));
+            return;
+        }
+
+        switch (subAction.toLowerCase()) {
+            case "vote" -> handleLegendsVote(sender, rest);
+            case "status" -> handleLegendsStatus(sender);
+            case "simulate" -> handleLegendsSimulate(sender, rest);
+            case "predict" -> handleLegendsPredict(sender);
+            case "sentiment" -> handleLegendsSentiment(sender);
+            case "feedback" -> handleLegendsFeedback(sender);
+            case "trigger" -> handleLegendsTrigger(sender);
+            case "revert" -> handleLegendsRevert(sender);
+            default -> {
+                // Default to status if no recognized sub-command
+                handleLegendsStatus(sender);
+            }
+        }
+    }
+
+    private void handleLegendsVote(CommandSender sender, String[] rest) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.players-only");
+            return;
+        }
+        if (rest.length == 0) {
+            player.sendMessage("§6§lELECTION OF LEGENDS — Vote");
+            player.sendMessage("§7Usage: /election legends vote <ideology>");
+            player.sendMessage("§7Ideologies: §cWarmonger §8| §bBuilder §8| §eMerchant §8| §dMystic");
+            player.sendMessage("§7First vote is free. Additional votes cost escalating gold.");
+            return;
+        }
+
+        Ideology ideology = Ideology.fromString(rest[0]);
+        if (ideology == null) {
+            player.sendMessage("§cUnknown ideology: " + rest[0]);
+            player.sendMessage("§7Valid: Warmonger, Builder, Merchant, Mystic");
+            return;
+        }
+
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        long cost = legends.getVoteWeightSystem().calculateNextVoteCost(player);
+        if (cost < 0) {
+            player.sendMessage("§cYou have reached the maximum votes (" + legends.getVoteWeightSystem().getMaxVotesPerPlayer() + ")!");
+            return;
+        }
+
+        if (cost > 0) {
+            // Economy check: Vault not required in pom yet, so skip actual economy
+            player.sendMessage("§ePurchasing vote #" + (legends.getVoteWeightSystem().getVoteCount(player) + 1)
+                    + " for " + cost + " gold.");
+            player.sendMessage("§7(Economy integration: Vault not configured. Vote recorded without cost.)");
+        }
+
+        int voteNum = legends.getVoteWeightSystem().purchaseVote(player);
+        legends.getVoteWeightSystem().addToVotePool(ideology, 1.0);
+
+        player.sendMessage(ideology.getChatColor() + "§lYou cast vote #" + voteNum + " for "
+                + ideology.getDisplayName() + "!");
+    }
+
+    private void handleLegendsStatus(CommandSender sender) {
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        sender.sendMessage("§6§l══ ELECTION OF LEGENDS STATUS ══");
+        sender.sendMessage("§7Next trigger at election: #" + (legends.getConfig().getGlobalElectionCount()
+                + legends.getConfig().getTriggerEveryNthElection()
+                - (legends.getConfig().getGlobalElectionCount() % legends.getConfig().getTriggerEveryNthElection())));
+
+        if (legends.getBossBattleArena().isBattleActive()) {
+            sender.sendMessage("§c§lBoss battle is ACTIVE!");
+            var standings = legends.getVoteWeightSystem().getStandings();
+            for (var entry : standings.entrySet()) {
+                sender.sendMessage("  " + entry.getKey().getChatColor() + entry.getKey().getDisplayName()
+                        + ": §f" + String.format("%.0f", entry.getValue()) + " votes");
+            }
+        }
+
+        if (legends.getWorldAlteration().isActive()) {
+            Ideology active = legends.getWorldAlteration().getActiveIdeology();
+            if (active != null) {
+                long remaining = legends.getWorldAlteration().getExpiresAt() - System.currentTimeMillis();
+                long daysLeft = Math.max(0, remaining / (24L * 60L * 60L * 1000L));
+                sender.sendMessage(active.getChatColor() + active.getDisplayName()
+                        + " §7rules. §e" + daysLeft + " days remaining.");
+            }
+        }
+
+        sender.sendMessage("§7Prophecies: " + legends.getProphecyEngine().getActiveProphecies().size());
+        sender.sendMessage("§7Monuments built: " + legends.getMonumentSystem().getMonumentCount());
+    }
+
+    private void handleLegendsSimulate(CommandSender sender, String[] rest) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.players-only");
+            return;
+        }
+        if (rest.length == 0) {
+            player.sendMessage("§5§lTEMPORAL SIMULATOR");
+            player.sendMessage("§7Usage: /election legends simulate <ideology>");
+            player.sendMessage("§7Cost: " + TemporalSimulator.SIMULATION_COST + " gold (informational only)");
+            return;
+        }
+
+        Ideology ideology = Ideology.fromString(rest[0]);
+        if (ideology == null) {
+            player.sendMessage("§cUnknown ideology: " + rest[0]);
+            return;
+        }
+
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        TemporalSimulator.SimulationResult result = legends.getTemporalSimulator().simulate(ideology, 7);
+        legends.getTemporalSimulator().sendReport(player, result);
+    }
+
+    private void handleLegendsPredict(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.players-only");
+            return;
+        }
+
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        AIPredictionEngine ai = legends.getAIPredictionEngine();
+        SentimentAnalyzer sentiment = legends.getSentimentAnalyzer();
+
+        if (!legends.getBossBattleArena().isBattleActive() && !sentiment.isTracking()) {
+            player.sendMessage("§cNo active election of legends. Predictions require live data.");
+            return;
+        }
+
+        player.sendMessage("§d§l🤖 Running AI prediction models...");
+
+        // Take a snapshot if needed
+        if (legends.getBossBattleArena().isBattleActive()) {
+            var currentDamage = new java.util.EnumMap<>(Ideology.class);
+            for (Ideology ideology : Ideology.values()) {
+                var boss = legends.getBossBattleArena().getBoss(ideology);
+                currentDamage.put(ideology, boss != null ? boss.getTotalDamageTaken() : 0.0);
+            }
+            sentiment.takeSnapshot(currentDamage);
+        }
+
+        AIPredictionEngine.ElectionPrediction prediction = ai.predict(
+                legends.getVoteWeightSystem(),
+                sentiment,
+                legends.getBossBattleArena(),
+                legends.getProphecyEngine()
+        );
+
+        ai.sendPredictionReport(player, prediction);
+    }
+
+    private void handleLegendsSentiment(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.players-only");
+            return;
+        }
+
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        SentimentAnalyzer sentiment = legends.getSentimentAnalyzer();
+
+        if (!sentiment.isTracking()) {
+            player.sendMessage("§cNo sentiment data available. Wait for an Election of Legends to begin.");
+            return;
+        }
+
+        player.sendMessage("");
+        player.sendMessage("§d§l▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀");
+        player.sendMessage("§d§l  PUBLIC SENTIMENT ANALYSIS");
+        player.sendMessage("§d§l▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄");
+        player.sendMessage("");
+
+        // Bar chart
+        double maxSent = 0;
+        for (Ideology ideology : Ideology.values()) {
+            maxSent = Math.max(maxSent, sentiment.getSentiment(ideology));
+        }
+
+        for (Ideology ideology : Ideology.values()) {
+            double sent = sentiment.getSentiment(ideology);
+            double mom = sentiment.getDamageMomentum(ideology);
+            int supporters = sentiment.getUniqueSupporters(ideology);
+            int barLen = (int) (sent / Math.max(0.01, maxSent) * 30);
+
+            String bar = "§8│"
+                    + ideology.getChatColor() + "█".repeat(barLen)
+                    + "§8" + "░".repeat(30 - barLen) + "§8│";
+
+            String momIcon = mom > 20 ? "§a▲" : mom < -20 ? "§c▼" : "§7●";
+
+            player.sendMessage(String.format(" %-14s %s §7%4.0f%% §8| %s %s §8| §7%d supporters",
+                    ideology.getChatColor() + ideology.getDisplayName(),
+                    bar,
+                    sent * 100,
+                    momIcon,
+                    String.format("%+.0f", mom),
+                    supporters));
+        }
+
+        player.sendMessage("");
+        player.sendMessage("§7Volatility: §e" + String.format("%.1f%%", sentiment.getVolatilityScore() * 100)
+                + " §8| §7Snapshots: §e" + sentiment.getHistory().size());
+        player.sendMessage("");
+        player.sendMessage(sentiment.getNarrative());
+    }
+
+    private void handleLegendsFeedback(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            messages.send(sender, "general.players-only");
+            return;
+        }
+
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        var feedback = legends.getFeedbackSystem();
+
+        if (!feedback.isActive()) {
+            player.sendMessage("§cThe AI analyst is currently offline. Wait for an Election of Legends to begin.");
+            return;
+        }
+
+        player.sendMessage("§d§l🤖 AI ANALYST DESK");
+        player.sendMessage("§7The AI analyst provides real-time commentary during the battle.");
+        player.sendMessage("§7Messages generated so far: §e" + feedback.getMessageCount());
+        player.sendMessage("");
+
+        // Trigger an immediate analyst commentary
+        AIPredictionEngine ai = legends.getAIPredictionEngine();
+        SentimentAnalyzer sentiment = legends.getSentimentAnalyzer();
+
+        if (legends.getBossBattleArena().isBattleActive()) {
+            var prediction = ai.predict(
+                    legends.getVoteWeightSystem(),
+                    sentiment,
+                    legends.getBossBattleArena(),
+                    legends.getProphecyEngine()
+            );
+            player.sendMessage("§8[§dAI Analyst§8] §7Live sentiment: " + sentiment.getNarrative());
+            player.sendMessage("§8[§dAI Analyst§8] §7Predicted winner: "
+                    + (prediction.predictedWinner() != null
+                    ? prediction.predictedWinner().getChatColor() + prediction.predictedWinner().getDisplayName()
+                    : "§7Unknown"));
+        } else {
+            player.sendMessage("§8[§dAI Analyst§8] §7No active battle. Waiting for the next Election of Legends...");
+        }
+    }
+
+    private void handleLegendsTrigger(CommandSender sender) {
+        if (!sender.hasPermission("townyelections.admin")) {
+            messages.send(sender, "general.no-permission");
+            return;
+        }
+        plugin.getLegendsManager().forceTriggerLegends();
+        sender.sendMessage("§6§lElection of Legends forcefully triggered!");
+    }
+
+    private void handleLegendsRevert(CommandSender sender) {
+        if (!sender.hasPermission("townyelections.admin")) {
+            messages.send(sender, "general.no-permission");
+            return;
+        }
+        plugin.getLegendsManager().forceRevertConsequences();
+        sender.sendMessage("§c§lAll Election of Legends consequences reverted.");
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void respond(CommandSender sender, OperationResult result, Map<String, String> placeholders) {
@@ -710,6 +993,11 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
             String partial = args[0].toLowerCase();
+            // Suggest "legends" if Election of Legends is enabled
+            ElectionOfLegendsManager legends = plugin.getLegendsManager();
+            if (legends != null && legends.getConfig().isEnabled() && "legends".startsWith(partial)) {
+                out.add("legends");
+            }
             for (String actionKey : commands.getActions()) {
                 // Hide admin sub-commands from users without permission.
                 if (isAdminAction(actionKey) && !sender.hasPermission("townyelections.admin")) {
@@ -724,6 +1012,27 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length >= 2) {
+            // Special handling for /election legends <sub>
+            if (args[0].equalsIgnoreCase("legends")) {
+                String partial = args[args.length - 1].toLowerCase();
+                if (args.length == 2) {
+                    for (String sub : List.of("vote", "status", "simulate", "predict", "sentiment", "feedback", "trigger", "revert")) {
+                        if (sub.startsWith(partial)) {
+                            out.add(sub);
+                        }
+                    }
+                } else if (args.length == 3 && (args[1].equalsIgnoreCase("vote")
+                        || args[1].equalsIgnoreCase("simulate"))) {
+                    for (Ideology ideology : Ideology.values()) {
+                        if (ideology.name().toLowerCase().startsWith(partial)
+                                || ideology.getDisplayName().toLowerCase().startsWith(partial)) {
+                            out.add(ideology.getDisplayName());
+                        }
+                    }
+                }
+                return out;
+            }
+
             String action = commands.actionFor(args[0]);
             if (action == null) {
                 return out;

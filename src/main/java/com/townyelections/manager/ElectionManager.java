@@ -4,6 +4,7 @@ import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
 import com.townyelections.integration.TownyHook;
+import com.townyelections.legends.ElectionOfLegendsManager;
 import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
@@ -789,10 +790,12 @@ public class ElectionManager {
         }
 
         // Loss commands for the other candidates.
+        List<String> loserNames = new ArrayList<>();
         for (Candidate c : election.getCandidateList()) {
             if (winnerUuid != null && c.getUuid().equals(winnerUuid)) {
                 continue;
             }
+            loserNames.add(c.getName());
             runConfiguredCommands(config.getCommandsOnLoss(), MessageManager.placeholders(
                     "loser", c.getName(),
                     "loser_uuid", c.getUuid().toString(),
@@ -800,6 +803,13 @@ public class ElectionManager {
                     "loser_party", c.getPartyName(),
                     "town", town.getName(),
                     "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0))));
+        }
+
+        // ---- Election of Legends hook ----
+        ElectionOfLegendsManager legends = plugin.getLegendsManager();
+        if (legends != null) {
+            legends.onElectionConcluded(election, winnerUuid,
+                    winnerCandidate != null ? winnerCandidate.getName() : null, loserNames);
         }
     }
 

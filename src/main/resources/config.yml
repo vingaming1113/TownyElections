@@ -193,6 +193,71 @@ notifications:
   # Remind voters who have not yet voted, this long before voting ends.
   # Set to "0" to disable reminders.
   voting-reminder-before-end: "6h"
-  # Notify residents when they log in if there is an active election they can
-  # participate in.
-  notify-on-join: true
+#  Notify residents when they log in if there is an active election they can
+#  participate in.
+notify-on-join: true
+
+# ============================================================================
+#  Election of Legends — Reality-Warping Election Event
+# ============================================================================
+#  Triggers every Nth election server-wide. Four ideologies clash in a boss
+#  battle arena, and the winner reshapes reality for 30 days.
+#  Set enabled: false to disable this feature entirely.
+election-of-legends:
+  enabled: true
+
+  # Every Nth election (across all towns) triggers the Election of Legends.
+  # Default: 50. Set to 1 for testing or a very small server.
+  trigger-every-nth-election: 50
+
+  # ----- Boss Battle Arena -----
+  boss-battle:
+    # World where the arena centre is located.
+    arena-world: "world"
+    arena-x: 0
+    arena-y: 100
+    arena-z: 0
+    # Base health of each ideology boss (scales with player count).
+    boss-health: 500.0
+    # Radius of the arena in blocks.
+    arena-radius: 100
+    # Particle effects during the boss battle.
+    effects-enabled: true
+    # Sound effects during the boss battle.
+    sound-effects-enabled: true
+
+  # ----- Vote Weights -----
+  vote-weights:
+    # Cost in gold for the second vote (first is free). Escalating formula:
+    # cost = base * multiplier ^ (voteNumber - 2)
+    base-vote-cost: 100.0
+    cost-multiplier: 2.5
+    # Maximum votes any single player may purchase.
+    max-votes-per-player: 10
+    # Refund gold if the player's chosen ideology loses.
+    refund-on-loss: false
+
+  # ----- Prophecies -----
+  prophecies:
+    # Number of prophecies generated and executed.
+    count: 5
+    # Minutes between each prophecy execution.
+    execution-time-minutes: 30
+
+  # ----- Consequences (last 30 days) -----
+  consequences:
+    # How many days the winning ideology's effects persist.
+    duration-days: 30
+    # Apply curses to losing candidates.
+    curse-effects-enabled: true
+    # Build a monument pillar at the arena centre.
+    monument-builds: true
+    # Unlock the winning ideology's custom dimension.
+    dimension-access: true
+
+  # Allow non-participating players to spectate the boss battle.
+  spectator-allowed: true
+
+  # Internal counter — do not edit manually.
+  internal:
+    global-election-count: 0
