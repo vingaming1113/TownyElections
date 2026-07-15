@@ -30,10 +30,11 @@ public class CommandConfig {
     public static final String CANCEL = "cancel";
     public static final String RELOAD = "reload";
     public static final String HELP = "help";
+    public static final String ROAST = "roast";
 
     private static final String[] ACTIONS = {
             RUN, WITHDRAW, CAMPAIGN, PROFILE, PARTY, PARTIES, VOTE, STATUS, CANDIDATES,
-            RESULTS, START, STOP, CANCEL, RELOAD, HELP
+            RESULTS, START, STOP, CANCEL, RELOAD, HELP, ROAST
     };
 
     private final TownyElections plugin;

@@ -14,6 +14,7 @@ import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
 import com.townyelections.model.VotingSystem;
+import com.townyelections.roaster.GrokRoaster;
 import com.townyelections.util.DurationUtil;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -85,6 +86,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             case CommandConfig.STATUS -> handleStatus(sender, label);
             case CommandConfig.CANDIDATES -> handleCandidates(sender, label);
             case CommandConfig.RESULTS -> handleResults(sender);
+            case CommandConfig.ROAST -> handleRoast(sender, rest, label);
             case CommandConfig.START -> handleAdmin(sender, rest, CommandConfig.START);
             case CommandConfig.STOP -> handleAdmin(sender, rest, CommandConfig.STOP);
             case CommandConfig.CANCEL -> handleAdmin(sender, rest, CommandConfig.CANCEL);
@@ -659,6 +661,77 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.send(sender, "general.reloaded");
     }
 
+    // ---- Roast --------------------------------------------------------------
+
+    private void handleRoast(CommandSender sender, String[] rest, String label) {
+        if (!sender.hasPermission("townyelections.info")) {
+            messages.send(sender, "general.no-permission");
+            return;
+        }
+        PlayerContext ctx = resolveContext(sender);
+        if (ctx == null) {
+            return;
+        }
+        Election election = elections.getElection(ctx.town());
+        if (election == null) {
+            messages.send(sender, "election.none-active");
+            return;
+        }
+        if (election.getCandidateCount() == 0) {
+            sender.sendMessage("§cNo candidates to roast. Wait for someone to run for office.");
+            return;
+        }
+
+        Player player = ctx.player();
+        GrokRoaster roaster = new GrokRoaster(plugin);
+        Map<UUID, Integer> tally = election.tally();
+        List<UUID> ranked = election.rankedCandidates();
+
+        if (rest.length == 0) {
+            // Roast the requesting player's own candidate if they are one,
+            // otherwise roast all.
+            Candidate self = election.getCandidate(ctx.resident().getUUID());
+            if (self != null) {
+                int rank = ranked.indexOf(self.getUuid()) + 1;
+                player.sendMessage(roaster.isApiConfigured()
+                        ? "§d🤖 Grok is thinking... §7(contacting xAI API)"
+                        : "§d🤖 Roasting §e" + self.getName() + "§d...");
+                roaster.roastAsync(self, election,
+                        tally.getOrDefault(self.getUuid(), 0), Math.max(1, rank),
+                        player, roast -> sendRoastToPlayer(player, roast));
+            } else {
+                player.sendMessage(roaster.isApiConfigured()
+                        ? "§d🤖 Grok is thinking... §7(contacting xAI API)"
+                        : "§d🤖 Roasting all candidates...");
+                roaster.roastAllAsync(election, player,
+                        roast -> sendRoastToPlayer(player, roast));
+            }
+            return;
+        }
+
+        // Roast a named candidate
+        String name = String.join(" ", rest);
+        Candidate target = election.findCandidateByName(name);
+        if (target == null) {
+            messages.send(sender, "vote.no-such-candidate", MessageManager.placeholders("name", name));
+            return;
+        }
+
+        int rank = ranked.indexOf(target.getUuid()) + 1;
+        player.sendMessage(roaster.isApiConfigured()
+                ? "§d🤖 Grok is thinking... §7(contacting xAI API)"
+                : "§d🤖 Roasting §e" + target.getName() + "§d...");
+        roaster.roastAsync(target, election,
+                tally.getOrDefault(target.getUuid(), 0), Math.max(1, rank),
+                player, roast -> sendRoastToPlayer(player, roast));
+    }
+
+    private void sendRoastToPlayer(Player player, String roast) {
+        for (String line : roast.split("\n")) {
+            player.sendMessage(line);
+        }
+    }
+
     // ---- Helpers -----------------------------------------------------------
 
     private void respond(CommandSender sender, OperationResult result, Map<String, String> placeholders) {
@@ -732,7 +805,8 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             // Suggest candidate names for voting. Ranked-choice and approval
             // ballots list several names, so complete every argument position
             // and skip names already on the command line.
-            if (CommandConfig.VOTE.equals(action) && sender instanceof Player player) {
+            if ((CommandConfig.VOTE.equals(action) || CommandConfig.ROAST.equals(action))
+                    && sender instanceof Player player) {
                 Town town = towny.getPlayerTown(player);
                 Election election = elections.getElection(town);
                 if (election != null

@@ -178,6 +178,7 @@ commands:
   status: "status"      # view current election status
   candidates: "candidates"  # list candidates
   results: "results"    # view results of the last concluded election
+  roast: "roast"        # Grok AI roasts a candidate (or all) with savage commentary
   start: "start"        # (admin) start an election
   stop: "stop"          # (admin) end voting early and tally
   cancel: "cancel"      # (admin) cancel an election with no winner
@@ -196,3 +197,35 @@ notifications:
   # Notify residents when they log in if there is an active election they can
   # participate in.
   notify-on-join: true
+
+# ----------------------------------------------------------------------------
+#  Grok Roaster — AI-powered candidate roasts
+# ----------------------------------------------------------------------------
+#  Connects to the xAI Grok API to roast your election candidates with genuine
+#  AI wit. Candidate name, campaign message, party, profile, and vote counts
+#  are sent to the model which returns a savage Minecraft-themed takedown.
+#
+#  If api-key is blank or set to "YOUR_API_KEY_HERE", the roaster falls back
+#  to procedural (offline) roasts so the /election roast command always works.
+roaster:
+  # Your xAI API key. Get one at https://console.x.ai/
+  # Leave blank to use offline procedural roasts instead.
+  api-key: "YOUR_API_KEY_HERE"
+
+  # xAI model to use. grok-2-latest is the default.
+  model: "grok-2-latest"
+
+  # xAI API endpoint. Do not change unless xAI releases a new base URL.
+  endpoint: "https://api.x.ai/v1/chat/completions"
+
+  # Maximum seconds to wait for the API response.
+  timeout-seconds: 20
+
+  # Maximum tokens in the generated roast. Higher = longer roasts.
+  max-tokens: 500
+
+  # Roast intensity sent in the system prompt: MILD, SPICY, or SCORCHED_EARTH.
+  intensity: "SPICY"
+
+  # Show roast results to the whole town (true) or only the command user (false).
+  broadcast-to-town: false
