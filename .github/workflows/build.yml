@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -32,3 +32,16 @@ jobs:
           name: TownyElections
           path: target/TownyElections-*.jar
           if-no-files-found: error
+
+      - name: Publish rolling nightly release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete nightly --yes --cleanup-tag || true
+          gh release create nightly \
+            --title "Nightly" \
+            --notes "Automated nightly build from commit ${{ github.sha }} (updated on every push to main)." \
+            --prerelease \
+            --target main \
+            target/TownyElections-*.jar
