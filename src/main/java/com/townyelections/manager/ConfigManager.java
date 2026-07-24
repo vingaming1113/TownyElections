@@ -22,6 +22,11 @@ public class ConfigManager {
     private boolean debug;
     private boolean metrics;
 
+    // update checker
+    private boolean updateCheckerEnabled;
+    private String updateProject;
+    private boolean updateNotifyAdminsOnJoin;
+
     // election
     private long nominationDurationMs;
     private long votingDurationMs;
@@ -83,6 +88,10 @@ public class ConfigManager {
         debug = c.getBoolean("general.debug", false);
         metrics = c.getBoolean("general.metrics", true);
 
+        updateCheckerEnabled = c.getBoolean("update-checker.enabled", true);
+        updateProject = c.getString("update-checker.modrinth-project", "elections");
+        updateNotifyAdminsOnJoin = c.getBoolean("update-checker.notify-admins-on-join", true);
+
         nominationDurationMs = DurationUtil.parseMillis(c.getString("election.nomination-duration"), days(2));
         votingDurationMs = DurationUtil.parseMillis(c.getString("election.voting-duration"), days(3));
         minCandidates = Math.max(1, c.getInt("election.min-candidates", 2));
@@ -140,6 +149,10 @@ public class ConfigManager {
     public String getLocale() { return locale; }
     public boolean isDebug() { return debug; }
     public boolean isMetrics() { return metrics; }
+
+    public boolean isUpdateCheckerEnabled() { return updateCheckerEnabled; }
+    public String getUpdateProject() { return updateProject; }
+    public boolean isUpdateNotifyAdminsOnJoin() { return updateNotifyAdminsOnJoin; }
 
     public long getNominationDurationMs() { return nominationDurationMs; }
     public long getVotingDurationMs() { return votingDurationMs; }

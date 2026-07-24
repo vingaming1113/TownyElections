@@ -18,6 +18,22 @@ general:
   metrics: true
 
 # ----------------------------------------------------------------------------
+#  Update checker
+# ----------------------------------------------------------------------------
+# On startup, TownyElections can check Modrinth for a newer *release* version
+# (beta and alpha versions are ignored). The check runs asynchronously and never
+# blocks the server; it only logs to the console and, optionally, notifies
+# admins on join. It never downloads or installs anything.
+update-checker:
+  # Master switch for the Modrinth update check.
+  enabled: true
+  # The Modrinth project slug or id to check (from the project's URL, e.g.
+  # modrinth.com/plugin/<slug>). Set this to match your download page.
+  modrinth-project: "elections"
+  # Notify players with townyelections.admin when they join if an update exists.
+  notify-admins-on-join: true
+
+# ----------------------------------------------------------------------------
 #  Election settings
 # ----------------------------------------------------------------------------
 election:

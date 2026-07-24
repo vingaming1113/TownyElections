@@ -9,6 +9,7 @@ import com.townyelections.manager.CommandConfig;
 import com.townyelections.manager.ConfigManager;
 import com.townyelections.manager.ElectionManager;
 import com.townyelections.manager.MessageManager;
+import com.townyelections.update.UpdateChecker;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
@@ -31,6 +32,7 @@ public class TownyElections extends JavaPlugin {
     private TownyHook townyHook;
     private ElectionManager electionManager;
     private ElectionMenu electionMenu;
+    private UpdateChecker updateChecker;
 
     private BukkitTask tickTask;
 
@@ -91,6 +93,12 @@ public class TownyElections extends JavaPlugin {
         // Optional integrations.
         hookPlaceholderAPI();
         setupMetrics();
+
+        // Update checker (Modrinth). Runs asynchronously; never blocks startup.
+        updateChecker = new UpdateChecker(this);
+        if (configManager.isUpdateCheckerEnabled()) {
+            updateChecker.checkAsync();
+        }
 
         getLogger().info("TownyElections enabled. Managing " + electionManager.getActiveElections().size()
                 + " active election(s).");
@@ -163,5 +171,9 @@ public class TownyElections extends JavaPlugin {
 
     public ElectionMenu getElectionMenu() {
         return electionMenu;
+    }
+
+    public UpdateChecker getUpdateChecker() {
+        return updateChecker;
     }
 }

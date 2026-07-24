@@ -12,6 +12,7 @@ import com.townyelections.manager.MessageManager;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionScope;
+import com.townyelections.update.UpdateChecker;
 import com.townyelections.util.DurationUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -54,7 +55,26 @@ public class PlayerListener implements Listener {
                     notifyElection(player, elections.getElection(nation.getUUID()), ElectionScope.NATION);
                 }
             }
+            notifyUpdate(player);
         }, 40L);
+    }
+
+    private void notifyUpdate(Player player) {
+        if (!plugin.getConfigManager().isUpdateCheckerEnabled()
+                || !plugin.getConfigManager().isUpdateNotifyAdminsOnJoin()) {
+            return;
+        }
+        if (!player.hasPermission("townyelections.admin")) {
+            return;
+        }
+        UpdateChecker checker = plugin.getUpdateChecker();
+        if (checker == null || !checker.isUpdateAvailable()) {
+            return;
+        }
+        messages.send(player, "update.available", MessageManager.placeholders(
+                "current", checker.getCurrentVersion(),
+                "latest", checker.getLatestVersion(),
+                "url", checker.getDownloadUrl()));
     }
 
     private void notifyElection(Player player, Election election, ElectionScope scope) {

@@ -36,6 +36,9 @@ election:
 nation:
   disabled: "&cNation elections are disabled on this server."
 
+update:
+  available: "&fA new release is available: &av{latest}&f (you have &7v{current}&f). Download: &b{url}"
+
 candidate:
   registered: "&aYou are now a candidate in the &f{town}&a election. Good luck!"
   already-registered: "&cYou are already a candidate in this election."

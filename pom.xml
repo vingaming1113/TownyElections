@@ -68,6 +68,15 @@
             <version>3.1.0</version>
             <scope>compile</scope>
         </dependency>
+
+        <!-- Gson: bundled with the Minecraft server / Paper at runtime, so this
+             is provided (not shaded). Used to parse the Modrinth update API. -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.11.0</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
