@@ -113,7 +113,7 @@ placeholders listed below.
 mvn clean package
 ```
 
-The shaded jar is produced at `target/TownyElections-1.1.0.jar`. Drop it into
+The shaded jar is produced at `target/TownyElections-1.1.1.jar`. Drop it into
 your server's `plugins/` folder alongside Towny.
 
 > The build depends on the Paper API, Towny (via JitPack), and PlaceholderAPI
