@@ -29,6 +29,10 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 ## Features
 
 - **Structured election lifecycle** — Nomination → Voting → (optional Runoff) → Concluded.
+- **Town & nation elections** — run elections per town or nation-wide with
+  `/election nation ...`, where every resident of every town in the nation may
+  stand and vote. Nation winners can receive Towny **nation ranks** and optional
+  **kingship**.
 - **Candidacy** — residents register with `/election run` and set a custom campaign
   message shown to voters.
 - **Political parties** — candidates can organize under configurable party labels,
@@ -137,8 +141,37 @@ literal below is **configurable** in `config.yml` under the `commands:` section.
 | `/election stop [town]`         | `townyelections.admin`    | End voting early and tally.          |
 | `/election cancel [town]`       | `townyelections.admin`    | Cancel with no winner.               |
 | `/election reload`              | `townyelections.admin`    | Reload configuration.                |
+| `/election nation <sub-command>`| varies by sub-command     | Run any of the above for your nation. |
 
 Admins may target another town by name; otherwise the sender's own town is used.
+
+### Nation elections
+
+TownyElections can run nation-wide elections alongside town elections. Prefix any
+sub-command with the configurable `nation` literal to target your **nation**
+instead of your town — every resident of every town in the nation may stand and
+vote:
+
+```text
+/election nation start                 # admin: start a nation election (or start <nation>)
+/election nation run                   # stand as a candidate in the nation election
+/election nation vote Alice            # vote in the nation election
+/election nation status                # view the nation election
+/election nation results               # view the last nation results
+```
+
+Nation elections reuse the durations, voting system, tie-breaker, and campaign
+settings used for towns. Nation-specific behaviour is configured under the
+`nation:` and `winner:` sections of `config.yml`:
+
+- `nation.enabled` — master switch for nation elections and the `nation` sub-command.
+- `nation.min-residents` — minimum nation residents required to hold an election.
+- `nation.auto-schedule` — auto-start nation elections on the town auto-schedule cadence.
+- `winner.grant-nation-ranks` — Towny **nation** ranks granted to a nation winner.
+- `winner.set-as-king` — transfer nation leadership (kingship) to the winner.
+
+Admins may target another nation by name (`/election nation start <nation>`);
+otherwise the sender's own nation is used.
 
 ### Inventory GUI
 
@@ -308,6 +341,10 @@ If PlaceholderAPI is installed, these placeholders are available (identifier
 | `%townyelections_leading_party%`    | Leading current-election party.       |
 | `%townyelections_last_winner%`      | Name of the last winner in the town. |
 | `%townyelections_last_winner_party%`| Party of the last winner in the town. |
+
+Every placeholder also has a `nation_` variant (for example
+`%townyelections_nation_phase%` or `%townyelections_nation_last_winner%`) that
+resolves against the player's **nation** election instead of their town election.
 
 ---
 

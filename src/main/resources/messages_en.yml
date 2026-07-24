@@ -9,6 +9,7 @@ general:
   players-only: "&cThis command can only be used by players."
   not-a-resident: "&cYou are not a registered Towny resident."
   no-town: "&cYou must belong to a town to do that."
+  no-nation: "&cYou must belong to a nation to do that."
   reloaded: "&aConfiguration reloaded successfully."
   unknown-command: "&cUnknown sub-command. Use &f/{label} {help}&c."
   invalid-number: "&cThat is not a valid number."
@@ -31,6 +32,9 @@ election:
   system-plurality: "&fPlurality"
   system-ranked-choice: "&fRanked Choice"
   system-approval: "&fApproval"
+
+nation:
+  disabled: "&cNation elections are disabled on this server."
 
 candidate:
   registered: "&aYou are now a candidate in the &f{town}&a election. Good luck!"
@@ -268,6 +272,7 @@ results:
 
 winner:
   made-mayor: "&a{winner} has been appointed Mayor of {town}."
+  made-king: "&a{winner} has been crowned leader of {town}."
   ranks-granted: "&a{winner} has been granted the rank(s): &f{ranks}&a."
   announce-town: "&6&l{winner}&e of &f{party}&e has won the election and now leads &f{town}&e!"
   announce-server: "&6&l{winner}&e of &f{party}&e has been elected in &f{town}&e!"
@@ -291,6 +296,7 @@ admin:
   cancelled: "&aYou cancelled the election in &f{town}&a."
   no-active-to-stop: "&cThere is no active election to stop in &f{town}&c."
   town-not-found: "&cNo town named &f{town}&c was found."
+  nation-not-found: "&cNo nation named &f{nation}&c was found."
 
 help:
   header: "&8&m-----&r &bTownyElections Help &8&m-----"
@@ -304,6 +310,7 @@ help:
   status: "&f/{label} {status} &8- &7View the current election."
   candidates: "&f/{label} {candidates} &8- &7List candidates."
   results: "&f/{label} {results} &8- &7View the last results."
+  nation: "&f/{label} {nation} <sub-command> &8- &7Run any command for your nation (e.g. {nation} {vote})."
   start: "&f/{label} {start} [town] &8- &7(Admin) Start an election."
   stop: "&f/{label} {stop} [town] &8- &7(Admin) End voting & tally."
   cancel: "&f/{label} {cancel} [town] &8- &7(Admin) Cancel the election."

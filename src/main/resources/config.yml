@@ -97,6 +97,25 @@ election:
     winner-reward: 0.0
 
 # ----------------------------------------------------------------------------
+#  Nation elections
+# ----------------------------------------------------------------------------
+# In addition to per-town elections, TownyElections can run nation-wide
+# elections. Every resident of every town in the nation may stand and vote.
+# Players use the same sub-commands prefixed with the "nation" literal, e.g.
+# /election nation run, /election nation vote <candidate>, /election nation start.
+# Nation elections reuse the durations, voting system, tie-breaker and campaign
+# settings above; only the options below are nation-specific.
+nation:
+  # Master switch for nation elections and the "/election nation" sub-command.
+  enabled: true
+  # Minimum residents a nation must have before a nation election may run.
+  min-residents: 3
+  # Also auto-start nation elections on the same cadence as town elections
+  # (see election.auto-schedule). Left off by default so nation elections are
+  # opt-in and started manually with /election nation start.
+  auto-schedule: false
+
+# ----------------------------------------------------------------------------
 #  Campaign settings
 # ----------------------------------------------------------------------------
 campaign:
@@ -138,14 +157,24 @@ winner:
   # Make the winning candidate the town's Mayor. This transfers mayorship.
   set-as-mayor: false
 
-  # Towny town ranks to grant the winner. These map to permission nodes defined
-  # in Towny's townyperms.yml (e.g. plot management). Add or remove as desired.
+  # Make the winner of a *nation* election the nation's King (leader). This
+  # transfers kingship. Only applies to nation elections.
+  set-as-king: false
+
+  # Towny town ranks to grant the winner of a *town* election. These map to
+  # permission nodes defined in Towny's townyperms.yml (e.g. plot management).
   grant-town-ranks:
     - "councillor"
     - "helper"
 
+  # Towny nation ranks to grant the winner of a *nation* election. These must be
+  # valid nation ranks defined in Towny's townyperms.yml. Invalid ranks are
+  # skipped with a console warning. Leave empty to grant no ranks.
+  grant-nation-ranks: []
+
   # If true, ranks granted by a previous election win are removed from the
-  # outgoing office holder(s) when a new winner takes office.
+  # outgoing office holder(s) when a new winner takes office. Applies to town
+  # ranks for town elections and nation ranks for nation elections.
   revoke-previous-winner-ranks: true
 
   # Extra vanilla/Bukkit console commands to run when a winner is decided.
@@ -183,6 +212,7 @@ commands:
   cancel: "cancel"      # (admin) cancel an election with no winner
   reload: "reload"      # (admin) reload configuration
   help: "help"
+  nation: "nation"      # prefix to target your nation, e.g. /election nation vote
 
 # ----------------------------------------------------------------------------
 #  Notifications

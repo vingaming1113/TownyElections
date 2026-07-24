@@ -30,10 +30,12 @@ public class CommandConfig {
     public static final String CANCEL = "cancel";
     public static final String RELOAD = "reload";
     public static final String HELP = "help";
+    /** Prefix that switches a sub-command to operate on the player's nation. */
+    public static final String NATION = "nation";
 
     private static final String[] ACTIONS = {
             RUN, WITHDRAW, CAMPAIGN, PROFILE, PARTY, PARTIES, VOTE, STATUS, CANDIDATES,
-            RESULTS, START, STOP, CANCEL, RELOAD, HELP
+            RESULTS, START, STOP, CANCEL, RELOAD, HELP, NATION
     };
 
     private final TownyElections plugin;

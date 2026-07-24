@@ -1,13 +1,16 @@
 package com.townyelections.manager;
 
+import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
+import com.townyelections.integration.Constituency;
 import com.townyelections.integration.TownyHook;
 import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
+import com.townyelections.model.ElectionScope;
 import com.townyelections.model.InstantRunoff;
 import com.townyelections.model.TieBreaker;
 import com.townyelections.model.VotingSystem;
@@ -88,9 +91,13 @@ public class ElectionManager {
     //  Candidacy
     // ========================================================================
 
-    /** Register the resident as a candidate in their town's election. */
+    /** Register the resident as a candidate in their constituency's election. */
     public OperationResult registerCandidate(Resident resident, Town town) {
-        Election election = active.get(town.getUUID());
+        return registerCandidate(resident, towny.of(town));
+    }
+
+    public OperationResult registerCandidate(Resident resident, Constituency c) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -110,14 +117,18 @@ public class ElectionManager {
         election.addCandidate(candidate);
         save();
 
-        broadcastTown(town, "candidate.self-registered-broadcast",
-                MessageManager.placeholders("player", resident.getName(), "town", town.getName()));
+        broadcast(c, "candidate.self-registered-broadcast",
+                MessageManager.placeholders("player", resident.getName(), "town", c.getName()));
         return OperationResult.ok("candidate.registered");
     }
 
-    /** Withdraw the resident from their town's election. */
+    /** Withdraw the resident from their constituency's election. */
     public OperationResult withdrawCandidate(Resident resident, Town town) {
-        Election election = active.get(town.getUUID());
+        return withdrawCandidate(resident, towny.of(town));
+    }
+
+    public OperationResult withdrawCandidate(Resident resident, Constituency c) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -131,7 +142,11 @@ public class ElectionManager {
 
     /** Set the resident's campaign message. Returns the outcome. */
     public OperationResult setCampaignMessage(Resident resident, Town town, String message) {
-        Election election = active.get(town.getUUID());
+        return setCampaignMessage(resident, towny.of(town), message);
+    }
+
+    public OperationResult setCampaignMessage(Resident resident, Constituency c, String message) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -158,7 +173,11 @@ public class ElectionManager {
 
     /** Set the resident's candidate profile. Returns the outcome. */
     public OperationResult setCandidateProfile(Resident resident, Town town, String profile) {
-        Election election = active.get(town.getUUID());
+        return setCandidateProfile(resident, towny.of(town), profile);
+    }
+
+    public OperationResult setCandidateProfile(Resident resident, Constituency c, String profile) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -184,7 +203,11 @@ public class ElectionManager {
     }
 
     public OperationResult leaveParty(Resident resident, Town town) {
-        Election election = active.get(town.getUUID());
+        return leaveParty(resident, towny.of(town));
+    }
+
+    public OperationResult leaveParty(Resident resident, Constituency c) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -198,7 +221,11 @@ public class ElectionManager {
     }
 
     public OperationResult renameParty(Town town, String oldName, String newName) {
-        Election election = active.get(town.getUUID());
+        return renameParty(towny.of(town), oldName, newName);
+    }
+
+    public OperationResult renameParty(Constituency c, String oldName, String newName) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -249,7 +276,11 @@ public class ElectionManager {
     }
 
     public OperationResult setPartyName(Resident resident, Town town, String partyName) {
-        Election election = active.get(town.getUUID());
+        return setPartyName(resident, towny.of(town), partyName);
+    }
+
+    public OperationResult setPartyName(Resident resident, Constituency c, String partyName) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
@@ -271,10 +302,10 @@ public class ElectionManager {
         candidate.setPartyName(trimmed);
         save();
         if (previousParty == null || !previousParty.equalsIgnoreCase(trimmed)) {
-            broadcastTown(town, "party.joined-broadcast", MessageManager.placeholders(
+            broadcast(c, "party.joined-broadcast", MessageManager.placeholders(
                     "player", candidate.getName(),
                     "party", trimmed,
-                    "town", town.getName()));
+                    "town", c.getName()));
         }
         return OperationResult.ok("party.set");
     }
@@ -284,25 +315,33 @@ public class ElectionManager {
     // ========================================================================
 
     public OperationResult castVote(Resident voter, Town town, String candidateName) {
-        Election election = active.get(town.getUUID());
+        return castVote(voter, towny.of(town), candidateName);
+    }
+
+    public OperationResult castVote(Resident voter, Constituency c, String candidateName) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
         Candidate candidate = election.findCandidateByName(candidateName);
-        return castVote(voter, town, election, candidate);
+        return castVote(voter, c, election, candidate);
     }
 
     public OperationResult castVote(Resident voter, Town town, UUID candidateUuid) {
-        Election election = active.get(town.getUUID());
+        return castVote(voter, towny.of(town), candidateUuid);
+    }
+
+    public OperationResult castVote(Resident voter, Constituency c, UUID candidateUuid) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
         Candidate candidate = election.getCandidate(candidateUuid);
-        return castVote(voter, town, election, candidate);
+        return castVote(voter, c, election, candidate);
     }
 
-    private OperationResult castVote(Resident voter, Town town, Election election, Candidate candidate) {
-        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+    private OperationResult castVote(Resident voter, Constituency c, Election election, Candidate candidate) {
+        OperationResult eligibility = checkVoterEligibility(voter, c, election);
         if (eligibility != null) {
             return eligibility;
         }
@@ -329,11 +368,15 @@ public class ElectionManager {
      * (names form the approved set).
      */
     public OperationResult castBallot(Resident voter, Town town, List<String> candidateNames) {
-        Election election = active.get(town.getUUID());
+        return castBallot(voter, towny.of(town), candidateNames);
+    }
+
+    public OperationResult castBallot(Resident voter, Constituency c, List<String> candidateNames) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
-        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        OperationResult eligibility = checkVoterEligibility(voter, c, election);
         if (eligibility != null) {
             return eligibility;
         }
@@ -373,11 +416,15 @@ public class ElectionManager {
      * requires vote changes to be enabled.
      */
     public OperationResult toggleBallotEntry(Resident voter, Town town, UUID candidateUuid) {
-        Election election = active.get(town.getUUID());
+        return toggleBallotEntry(voter, towny.of(town), candidateUuid);
+    }
+
+    public OperationResult toggleBallotEntry(Resident voter, Constituency c, UUID candidateUuid) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
-        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        OperationResult eligibility = checkVoterEligibility(voter, c, election);
         if (eligibility != null) {
             return eligibility;
         }
@@ -409,11 +456,15 @@ public class ElectionManager {
 
     /** Clears the voter's entire ballot (GUI button; requires vote changes). */
     public OperationResult clearBallot(Resident voter, Town town) {
-        Election election = active.get(town.getUUID());
+        return clearBallot(voter, towny.of(town));
+    }
+
+    public OperationResult clearBallot(Resident voter, Constituency c) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
-        OperationResult eligibility = checkVoterEligibility(voter, town, election);
+        OperationResult eligibility = checkVoterEligibility(voter, c, election);
         if (eligibility != null) {
             return eligibility;
         }
@@ -429,11 +480,11 @@ public class ElectionManager {
     }
 
     /** Shared phase and residency checks; null when the voter may proceed. */
-    private OperationResult checkVoterEligibility(Resident voter, Town town, Election election) {
+    private OperationResult checkVoterEligibility(Resident voter, Constituency c, Election election) {
         if (election.getPhase() != ElectionPhase.VOTING && election.getPhase() != ElectionPhase.RUNOFF) {
             return OperationResult.fail("vote.not-open");
         }
-        if (!towny.isResidentOfTown(voter.getUUID(), town)) {
+        if (!c.isResident(voter.getUUID())) {
             return OperationResult.fail("vote.not-eligible");
         }
         return null;
@@ -459,57 +510,73 @@ public class ElectionManager {
 
     /** Start a new election for a town. Returns the outcome. */
     public OperationResult startElection(Town town) {
-        if (active.containsKey(town.getUUID())) {
+        return startElection(towny.of(town));
+    }
+
+    /** Start a new election for any constituency (town or nation). */
+    public OperationResult startElection(Constituency c) {
+        if (active.containsKey(c.getUuid())) {
             return OperationResult.fail("election.already-active");
         }
-        if (towny.getResidentCount(town) < config.getMinTownResidents()) {
+        int minResidents = c.scope() == ElectionScope.NATION
+                ? config.getMinNationResidents() : config.getMinTownResidents();
+        if (c.getResidentCount() < minResidents) {
             return OperationResult.fail("election.town-too-small");
         }
         long endsAt = System.currentTimeMillis() + config.getNominationDurationMs();
-        Election election = new Election(town.getUUID(), town.getName(), ElectionPhase.NOMINATION, endsAt);
+        Election election = new Election(c.getUuid(), c.getName(), ElectionPhase.NOMINATION, endsAt);
+        election.setScope(c.scope());
         election.setVotingSystem(config.getVotingSystem());
-        active.put(town.getUUID(), election);
+        active.put(c.getUuid(), election);
         save();
 
-        broadcastTown(town, "election.started-nomination", MessageManager.placeholders(
-                "town", town.getName(),
+        broadcast(c, "election.started-nomination", MessageManager.placeholders(
+                "town", c.getName(),
                 "duration", DurationUtil.format(config.getNominationDurationMs()),
                 "label", "election",
-                "run", commands.literal(CommandConfig.RUN)));
+                "run", subLiteral(election, CommandConfig.RUN)));
         if (config.isBroadcastServerWide()) {
             Bukkit.broadcast(messages.prefixed(
-                    messages.raw("election.announce-server-start").replace("{town}", town.getName())));
+                    messages.raw("election.announce-server-start").replace("{town}", c.getName())));
         }
         return OperationResult.ok("admin.started");
     }
 
     /** Force voting to end immediately and tally results. */
     public OperationResult stopElection(Town town) {
-        Election election = active.get(town.getUUID());
+        return stopElection(towny.of(town));
+    }
+
+    public OperationResult stopElection(Constituency c) {
+        Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("admin.no-active-to-stop");
         }
         if (election.getPhase() == ElectionPhase.NOMINATION) {
             // Skip straight into concluding based on (likely zero) candidates.
-            transitionToVoting(town, election);
-            election = active.get(town.getUUID());
+            transitionToVoting(c, election);
+            election = active.get(c.getUuid());
             if (election == null) {
                 return OperationResult.ok("admin.stopped");
             }
         }
-        concludeElection(town, election);
+        concludeElection(c, election);
         return OperationResult.ok("admin.stopped");
     }
 
     /** Cancel an election with no winner. */
     public OperationResult cancelElection(Town town) {
-        Election election = active.remove(town.getUUID());
+        return cancelElection(towny.of(town));
+    }
+
+    public OperationResult cancelElection(Constituency c) {
+        Election election = active.remove(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
         save();
-        broadcastTown(town, "election.cancelled",
-                MessageManager.placeholders("town", town.getName()));
+        broadcast(c, "election.cancelled",
+                MessageManager.placeholders("town", c.getName()));
         return OperationResult.ok("admin.cancelled");
     }
 
@@ -522,25 +589,25 @@ public class ElectionManager {
 
         // Process phase transitions for active elections.
         for (Election election : new ArrayList<>(active.values())) {
-            Town town = towny.getTown(election.getTownUuid());
-            if (town == null) {
-                // Town no longer exists; drop the election silently.
+            Constituency c = towny.constituencyFor(election);
+            if (c == null) {
+                // Town/nation no longer exists; drop the election silently.
                 active.remove(election.getTownUuid());
                 save();
                 continue;
             }
-            election.setTownName(town.getName());
+            election.setTownName(c.getName());
 
             switch (election.getPhase()) {
                 case NOMINATION -> {
                     if (election.isPhaseExpired()) {
-                        transitionToVoting(town, election);
+                        transitionToVoting(c, election);
                     }
                 }
                 case VOTING, RUNOFF -> {
-                    maybeSendVotingReminder(town, election, now);
+                    maybeSendVotingReminder(c, election, now);
                     if (election.isPhaseExpired()) {
-                        concludeElection(town, election);
+                        concludeElection(c, election);
                     }
                 }
                 default -> {
@@ -551,29 +618,30 @@ public class ElectionManager {
         }
 
         // Auto-scheduling of new elections.
-        if (config.isAutoScheduleEnabled()) {
-            maybeAutoSchedule(now);
+        boolean nationAuto = config.isNationElectionsEnabled() && config.isNationAutoSchedule();
+        if (config.isAutoScheduleEnabled() || nationAuto) {
+            maybeAutoSchedule(now, nationAuto);
         }
     }
 
-    private void transitionToVoting(Town town, Election election) {
+    private void transitionToVoting(Constituency c, Election election) {
         int candidates = election.getCandidateCount();
 
         // Not enough candidates: try auto-win or cancel.
         if (candidates < config.getMinCandidates()) {
             if (candidates == 1 && config.isAutoWinSingleCandidate()) {
                 election.setPhase(ElectionPhase.VOTING);
-                concludeElection(town, election);
+                concludeElection(c, election);
                 return;
             }
-            active.remove(town.getUUID());
+            active.remove(c.getUuid());
             save();
-            broadcastTown(town, "election.cancelled-not-enough-candidates",
+            broadcast(c, "election.cancelled-not-enough-candidates",
                     MessageManager.placeholders(
-                            "town", town.getName(),
+                            "town", c.getName(),
                             "count", String.valueOf(candidates),
                             "min", String.valueOf(config.getMinCandidates())));
-            scheduleNextAuto(town.getUUID());
+            scheduleNextAuto(c.getUuid());
             return;
         }
 
@@ -581,16 +649,16 @@ public class ElectionManager {
         election.setPhaseEndsAt(System.currentTimeMillis() + config.getVotingDurationMs());
         election.setReminderSent(false);
         save();
-        broadcastTown(town, "election.nominations-closed-voting-open",
+        broadcast(c, "election.nominations-closed-voting-open",
                 MessageManager.placeholders(
-                        "town", town.getName(),
+                        "town", c.getName(),
                         "duration", DurationUtil.format(config.getVotingDurationMs()),
                         "label", "election",
-                        "vote", commands.literal(CommandConfig.VOTE),
+                        "vote", subLiteral(election, CommandConfig.VOTE),
                         "system", messages.raw(election.getVotingSystem().messageKey())));
     }
 
-    private void maybeSendVotingReminder(Town town, Election election, long now) {
+    private void maybeSendVotingReminder(Constituency c, Election election, long now) {
         long reminderWindow = config.getVotingReminderBeforeEndMs();
         if (reminderWindow <= 0 || election.isReminderSent()) {
             return;
@@ -599,17 +667,17 @@ public class ElectionManager {
             election.setReminderSent(true);
             save();
             String time = DurationUtil.format(election.getMillisRemaining());
-            for (Resident resident : town.getResidents()) {
+            for (Resident resident : c.getResidents()) {
                 if (election.hasVoted(resident.getUUID())) {
                     continue;
                 }
                 Player online = Bukkit.getPlayer(resident.getUUID());
                 if (online != null) {
                     messages.send(online, "vote.reminder", MessageManager.placeholders(
-                            "town", town.getName(),
+                            "town", c.getName(),
                             "time", time,
                             "label", "election",
-                            "vote", commands.literal(CommandConfig.VOTE)));
+                            "vote", subLiteral(election, CommandConfig.VOTE)));
                 }
             }
         }
@@ -619,9 +687,9 @@ public class ElectionManager {
      * Tally the election, resolve ties, record the result, apply rewards, and
      * remove it from the active set.
      */
-    public void concludeElection(Town town, Election election) {
+    public void concludeElection(Constituency c, Election election) {
         if (election.getVotingSystem() == VotingSystem.RANKED_CHOICE) {
-            concludeRankedChoice(town, election);
+            concludeRankedChoice(c, election);
             return;
         }
 
@@ -633,7 +701,7 @@ public class ElectionManager {
             if (top.size() == 1) {
                 winner = top.get(0);
             } else if (top.size() > 1) {
-                winner = resolveTie(town, election, top);
+                winner = resolveTie(c, election, top);
                 // A RUNOFF tie-breaker starts a new round instead of concluding now.
                 if (winner == null && election.getPhase() == ElectionPhase.RUNOFF) {
                     return;
@@ -641,11 +709,11 @@ public class ElectionManager {
             }
         }
 
-        recordAndReward(town, election, winner, tally, List.of(), null);
+        recordAndReward(c, election, winner, tally, List.of(), null);
     }
 
     /** Runs the instant-runoff count and concludes from its outcome. */
-    private void concludeRankedChoice(Town town, Election election) {
+    private void concludeRankedChoice(Constituency c, Election election) {
         InstantRunoff.Outcome outcome = election.instantRunoff();
         List<UUID> finalists = outcome.finalists();
 
@@ -654,14 +722,14 @@ public class ElectionManager {
             if (finalists.size() == 1) {
                 winner = finalists.get(0);
             } else if (finalists.size() > 1) {
-                winner = resolveTie(town, election, finalists);
+                winner = resolveTie(c, election, finalists);
                 if (winner == null && election.getPhase() == ElectionPhase.RUNOFF) {
                     return;
                 }
             }
         }
 
-        recordAndReward(town, election, winner, outcome.finalVotes(),
+        recordAndReward(c, election, winner, outcome.finalVotes(),
                 toResultRounds(election, outcome), outcome.finishOrder());
     }
 
@@ -686,7 +754,7 @@ public class ElectionManager {
         return candidate == null ? "?" : candidate.getName();
     }
 
-    private UUID resolveTie(Town town, Election election, List<UUID> tied) {
+    private UUID resolveTie(Constituency constituency, Election election, List<UUID> tied) {
         TieBreaker breaker = config.getTieBreaker();
         switch (breaker) {
             case RANDOM:
@@ -704,14 +772,14 @@ public class ElectionManager {
                 return earliest != null ? earliest : tied.get(0);
             }
             case INCUMBENT: {
-                Resident mayor = towny.getMayor(town);
-                if (mayor != null && tied.contains(mayor.getUUID())) {
-                    return mayor.getUUID();
+                Resident leader = constituency.getLeader();
+                if (leader != null && tied.contains(leader.getUUID())) {
+                    return leader.getUUID();
                 }
                 return tied.get(random.nextInt(tied.size()));
             }
             case RUNOFF: {
-                startRunoff(town, election, tied);
+                startRunoff(constituency, election, tied);
                 return null;
             }
             case NONE:
@@ -720,7 +788,7 @@ public class ElectionManager {
         }
     }
 
-    private void startRunoff(Town town, Election election, List<UUID> tied) {
+    private void startRunoff(Constituency constituency, Election election, List<UUID> tied) {
         List<String> names = new ArrayList<>();
         for (UUID id : tied) {
             Candidate c = election.getCandidate(id);
@@ -732,11 +800,12 @@ public class ElectionManager {
         election.setPhase(ElectionPhase.RUNOFF);
         election.setPhaseEndsAt(System.currentTimeMillis() + config.getRunoffDurationMs());
         save();
-        broadcastTown(town, "results.tie-runoff",
+        broadcast(constituency, "results.tie-runoff",
                 MessageManager.placeholders("candidates", String.join(", ", names)));
     }
 
-    private void recordAndReward(Town town, Election election, UUID winnerUuid, Map<UUID, Integer> tally,
+    private void recordAndReward(Constituency constituency, Election election, UUID winnerUuid,
+                                 Map<UUID, Integer> tally,
                                  List<ElectionResult.Round> rounds, List<UUID> finishOrder) {
         // Build the ranked standings list.
         List<UUID> ranked = finishOrder != null ? finishOrder : election.rankedCandidates();
@@ -752,40 +821,40 @@ public class ElectionManager {
         int winnerVotes = winnerUuid == null ? 0 : tally.getOrDefault(winnerUuid, 0);
 
         ElectionResult result = new ElectionResult(
-                town.getUUID(), town.getName(),
+                constituency.getUuid(), constituency.getName(),
                 winnerUuid, winnerCandidate == null ? null : winnerCandidate.getName(),
-                winnerVotes, election.getTotalVotes(), towny.getResidentCount(town),
+                winnerVotes, election.getTotalVotes(), constituency.getResidentCount(),
                 System.currentTimeMillis(), standings, election.getVotingSystem(), rounds);
 
-        results.put(town.getUUID(), result);
-        active.remove(town.getUUID());
-        scheduleNextAuto(town.getUUID());
+        results.put(constituency.getUuid(), result);
+        active.remove(constituency.getUuid());
+        scheduleNextAuto(constituency.getUuid());
         save();
 
         // Announce.
-        broadcastTown(town, "election.concluded",
-                MessageManager.placeholders("town", town.getName()));
+        broadcast(constituency, "election.concluded",
+                MessageManager.placeholders("town", constituency.getName()));
 
         PartyStanding leadingParty = leadingParty(election, tally);
         if (leadingParty != null) {
-            broadcastTown(town, "results.leading-party", MessageManager.placeholders(
+            broadcast(constituency, "results.leading-party", MessageManager.placeholders(
                     "party", leadingParty.name(),
                     "votes", String.valueOf(leadingParty.votes())));
         }
 
         if (winnerCandidate != null) {
-            applyWinnerRewards(town, winnerCandidate, winnerVotes, election.getTotalVotes());
-            broadcastTown(town, "winner.announce-town",
+            applyWinnerRewards(constituency, winnerCandidate, winnerVotes, election.getTotalVotes());
+            broadcast(constituency, "winner.announce-town",
                     MessageManager.placeholders("winner", winnerCandidate.getName(),
-                            "party", winnerCandidate.getPartyName(), "town", town.getName()));
+                            "party", winnerCandidate.getPartyName(), "town", constituency.getName()));
             if (config.isBroadcastServerWide()) {
                 Bukkit.broadcast(messages.prefixed(messages.raw("winner.announce-server")
                         .replace("{winner}", winnerCandidate.getName())
                         .replace("{party}", winnerCandidate.getPartyName())
-                        .replace("{town}", town.getName())));
+                        .replace("{town}", constituency.getName())));
             }
         } else {
-            broadcastTown(town, "results.no-winner", null);
+            broadcast(constituency, "results.no-winner", null);
         }
 
         // Loss commands for the other candidates.
@@ -798,7 +867,7 @@ public class ElectionManager {
                     "loser_uuid", c.getUuid().toString(),
                     "party", c.getPartyName(),
                     "loser_party", c.getPartyName(),
-                    "town", town.getName(),
+                    "town", constituency.getName(),
                     "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0))));
         }
     }
@@ -827,31 +896,36 @@ public class ElectionManager {
     private record PartyStanding(String name, int votes) {
     }
 
-    /** Grant the winner their configured Towny ranks / mayorship and run commands. */
-    private void applyWinnerRewards(Town town, Candidate winner, int winnerVotes, int totalVotes) {
+    /** Grant the winner their configured Towny ranks / leadership and run commands. */
+    private void applyWinnerRewards(Constituency constituency, Candidate winner, int winnerVotes, int totalVotes) {
+        boolean nation = constituency.scope() == ElectionScope.NATION;
+        List<String> ranks = nation ? config.getGrantNationRanks() : config.getGrantTownRanks();
+        boolean setLeader = nation ? config.isSetAsKing() : config.isSetAsMayor();
+
         Resident winnerResident = towny.getResident(winner.getUuid());
         if (winnerResident == null) {
             plugin.getLogger().warning("Winner " + winner.getName()
                     + " has no Towny resident record; skipping rank rewards.");
         } else {
-            // Optionally revoke ranks from the previous holder (the current mayor).
+            // Optionally revoke ranks from the previous holder (the current leader).
             if (config.isRevokePreviousWinnerRanks()) {
-                Resident previous = towny.getMayor(town);
+                Resident previous = constituency.getLeader();
                 if (previous != null && !previous.getUUID().equals(winnerResident.getUUID())) {
-                    towny.revokeRanks(previous, config.getGrantTownRanks());
+                    constituency.revokeRanks(previous, ranks);
                 }
             }
 
-            List<String> applied = towny.grantRanks(winnerResident, config.getGrantTownRanks());
+            List<String> applied = constituency.grantRanks(winnerResident, ranks);
             if (!applied.isEmpty()) {
-                broadcastTown(town, "winner.ranks-granted", MessageManager.placeholders(
+                broadcast(constituency, "winner.ranks-granted", MessageManager.placeholders(
                         "winner", winner.getName(), "ranks", String.join(", ", applied)));
             }
 
-            if (config.isSetAsMayor()) {
-                if (towny.setMayor(town, winnerResident)) {
-                    broadcastTown(town, "winner.made-mayor", MessageManager.placeholders(
-                            "winner", winner.getName(), "town", town.getName()));
+            if (setLeader) {
+                if (constituency.setLeader(winnerResident)) {
+                    broadcast(constituency, nation ? "winner.made-king" : "winner.made-mayor",
+                            MessageManager.placeholders(
+                                    "winner", winner.getName(), "town", constituency.getName()));
                 }
             }
         }
@@ -862,7 +936,7 @@ public class ElectionManager {
                 "winner_uuid", winner.getUuid().toString(),
                 "party", winner.getPartyName(),
                 "winner_party", winner.getPartyName(),
-                "town", town.getName(),
+                "town", constituency.getName(),
                 "votes", String.valueOf(winnerVotes),
                 "total_votes", String.valueOf(totalVotes)));
     }
@@ -892,30 +966,45 @@ public class ElectionManager {
     //  Auto-scheduling
     // ========================================================================
 
-    private void maybeAutoSchedule(long now) {
-        for (Town town : com.palmergames.bukkit.towny.TownyUniverse.getInstance().getTowns()) {
-            UUID uuid = town.getUUID();
-            if (active.containsKey(uuid)) {
-                continue;
+    private void maybeAutoSchedule(long now, boolean nationAuto) {
+        if (config.isAutoScheduleEnabled()) {
+            for (Town town : com.palmergames.bukkit.towny.TownyUniverse.getInstance().getTowns()) {
+                maybeAutoScheduleConstituency(towny.of(town), config.getMinTownResidents(), now);
             }
-            if (towny.getResidentCount(town) < config.getMinTownResidents()) {
-                continue;
-            }
-            long next = nextAutoStart.getOrDefault(uuid, 0L);
-            if (next == 0L) {
-                // First time we've seen this town under auto-schedule: arm the timer.
-                nextAutoStart.put(uuid, now + config.getAutoScheduleIntervalMs());
-                continue;
-            }
-            if (now >= next) {
-                startElection(town);
+        }
+        if (nationAuto) {
+            for (Nation nation : towny.getNations()) {
+                maybeAutoScheduleConstituency(towny.of(nation), config.getMinNationResidents(), now);
             }
         }
     }
 
-    private void scheduleNextAuto(UUID townUuid) {
-        if (config.isAutoScheduleEnabled()) {
-            nextAutoStart.put(townUuid, System.currentTimeMillis() + config.getAutoScheduleIntervalMs());
+    private void maybeAutoScheduleConstituency(Constituency c, int minResidents, long now) {
+        if (c == null) {
+            return;
+        }
+        UUID uuid = c.getUuid();
+        if (active.containsKey(uuid)) {
+            return;
+        }
+        if (c.getResidentCount() < minResidents) {
+            return;
+        }
+        long next = nextAutoStart.getOrDefault(uuid, 0L);
+        if (next == 0L) {
+            // First time we've seen this constituency under auto-schedule: arm the timer.
+            nextAutoStart.put(uuid, now + config.getAutoScheduleIntervalMs());
+            return;
+        }
+        if (now >= next) {
+            startElection(c);
+        }
+    }
+
+    private void scheduleNextAuto(UUID uuid) {
+        if (config.isAutoScheduleEnabled()
+                || (config.isNationElectionsEnabled() && config.isNationAutoSchedule())) {
+            nextAutoStart.put(uuid, System.currentTimeMillis() + config.getAutoScheduleIntervalMs());
         }
     }
 
@@ -923,19 +1012,31 @@ public class ElectionManager {
     //  Messaging helper
     // ========================================================================
 
-    private void broadcastTown(Town town, String key, Map<String, String> placeholders) {
+    private void broadcast(Constituency c, String key, Map<String, String> placeholders) {
         String body = messages.raw(key);
         if (placeholders != null) {
             for (Map.Entry<String, String> e : placeholders.entrySet()) {
                 body = body.replace("{" + e.getKey() + "}", e.getValue());
             }
         }
-        for (Resident resident : town.getResidents()) {
+        for (Resident resident : c.getResidents()) {
             Player online = Bukkit.getPlayer(resident.getUUID());
             if (online != null) {
                 online.sendMessage(messages.prefixed(body));
             }
         }
+    }
+
+    /**
+     * The command literal for an action, prefixed with the nation sub-command
+     * when the election is a nation election (e.g. {@code nation vote}).
+     */
+    private String subLiteral(Election election, String action) {
+        String literal = commands.literal(action);
+        if (election.getScope() == ElectionScope.NATION) {
+            return commands.literal(CommandConfig.NATION) + " " + literal;
+        }
+        return literal;
     }
 
     // ========================================================================

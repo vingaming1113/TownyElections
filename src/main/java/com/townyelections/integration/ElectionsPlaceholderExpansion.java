@@ -1,5 +1,7 @@
 package com.townyelections.integration;
 
+import com.palmergames.bukkit.towny.object.Nation;
+import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
 import com.townyelections.model.Candidate;
@@ -30,6 +32,10 @@ import java.util.UUID;
  *   <li>%townyelections_last_winner% - name of the last winner in their town</li>
  *   <li>%townyelections_last_winner_party% - party of the last winner in their town</li>
  * </ul>
+ *
+ * <p>Every placeholder above also has a {@code nation_} variant (e.g.
+ * {@code %townyelections_nation_phase%}) that resolves against the player's
+ * nation election instead of their town election.
  */
 public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
 
@@ -64,13 +70,24 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
         if (player == null) {
             return "";
         }
-        com.palmergames.bukkit.towny.object.Resident resident =
-                plugin.getTownyHook().getResident(player.getUniqueId());
-        Town town = (resident != null && resident.hasTown()) ? resident.getTownOrNull() : null;
+        Resident resident = plugin.getTownyHook().getResident(player.getUniqueId());
 
-        Election election = town == null ? null : plugin.getElectionManager().getElection(town);
+        String key = params.toLowerCase();
+        Election election;
+        ElectionResult lastResult;
+        if (key.startsWith("nation_")) {
+            key = key.substring("nation_".length());
+            Nation nation = (resident != null && resident.hasNation()) ? resident.getNationOrNull() : null;
+            election = nation == null ? null : plugin.getElectionManager().getElection(nation.getUUID());
+            lastResult = nation == null ? null
+                    : plugin.getElectionManager().getLastResult(nation.getUUID());
+        } else {
+            Town town = (resident != null && resident.hasTown()) ? resident.getTownOrNull() : null;
+            election = town == null ? null : plugin.getElectionManager().getElection(town);
+            lastResult = town == null ? null : plugin.getElectionManager().getLastResult(town.getUUID());
+        }
 
-        switch (params.toLowerCase()) {
+        switch (key) {
             case "phase":
                 return election == null ? "none" : election.getPhase().name().toLowerCase();
             case "voting_system":
@@ -92,17 +109,14 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
             }
             case "leading_party":
                 return election == null ? "" : leadingParty(election);
-            case "last_winner": {
-                ElectionResult result = getLastResult(town);
-                return result == null || !result.hasWinner() ? "" : result.getWinnerName();
-            }
+            case "last_winner":
+                return lastResult == null || !lastResult.hasWinner() ? "" : lastResult.getWinnerName();
             case "last_winner_party": {
-                ElectionResult result = getLastResult(town);
-                if (result == null || !result.hasWinner()) {
+                if (lastResult == null || !lastResult.hasWinner()) {
                     return "";
                 }
-                return result.getStandings().stream()
-                        .filter(standing -> standing.uuid.equals(result.getWinnerUuid()))
+                return lastResult.getStandings().stream()
+                        .filter(standing -> standing.uuid.equals(lastResult.getWinnerUuid()))
                         .map(standing -> standing.partyName)
                         .findFirst()
                         .orElse(plugin.getConfigManager().getDefaultPartyName());
@@ -132,9 +146,5 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
                 .map(Map.Entry::getKey)
                 .findFirst()
                 .orElse("");
-    }
-
-    private ElectionResult getLastResult(Town town) {
-        return town == null ? null : plugin.getElectionManager().getLastResult(town.getUUID());
     }
 }
