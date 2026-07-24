@@ -49,6 +49,12 @@ candidate:
   cost-charged: "&7A candidacy fee of &f{cost}&7 was charged."
   cannot-afford: "&cYou cannot afford the candidacy fee of &f{cost}&c."
   self-registered-broadcast: "&e{player}&7 has entered the race for &f{town}&7!"
+  edits-locked: "&cYou cannot change your campaign details once voting has begun."
+  recommend-header: "&7Next steps to build your campaign:"
+  recommend-campaign: "&8 • &fSet a campaign message: &7/{label} {campaign} <message>"
+  recommend-party: "&8 • &fJoin or create a party: &7/{label} {party} <name>"
+  recommend-color: "&8 • &fColour your party: &7/{label} {party} color <colour>"
+  recommend-profile: "&8 • &fWrite a candidate profile: &7/{label} {profile} <text>"
 
 campaign:
   set: "&aYour campaign message has been set."
@@ -79,6 +85,10 @@ party:
   rename-usage: "&cUsage: &f/{label} {party} rename <old> <new>"
   too-long: "&cYour political party name is too long (max &e{max}&c characters)."
   empty: "&cUsage: &f/{label} {party} <existing party or new name>"
+  color-set: "&aYour party colour has been set. Preview: &r{party}&a."
+  color-invalid: "&cInvalid colour &f{color}&c. Use a name (e.g. red), a code (e.g. &c) or hex (&#RRGGBB)."
+  color-needs-party: "&cJoin or create a party first, then set its colour."
+  color-usage: "&cUsage: &f/{label} {party} color <colour>&c (name, &&code, or &#RRGGBB)."
 
 parties:
   header: "&8&m-----&r &bElection Parties &8- &f{town} &8&m-----"
@@ -308,6 +318,7 @@ help:
   campaign: "&f/{label} {campaign} <message> &8- &7Set your campaign message."
   profile: "&f/{label} {profile} <profile> &8- &7Set your candidate profile."
   party: "&f/{label} {party} <name> &8- &7Join or create a political party."
+  party-color: "&f/{label} {party} color <colour> &8- &7Set your party's colour."
   parties: "&f/{label} {parties} &8- &7List current parties and standings."
   vote: "&f/{label} {vote} <candidate...> &8- &7Cast your vote (list several names to rank or approve them)."
   status: "&f/{label} {status} &8- &7View the current election."

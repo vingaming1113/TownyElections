@@ -205,10 +205,22 @@ admin-rename without changing the core individual-winner election rules.
 
 ```text
 /election party Reform Coalition      # join or create a party
+/election party color gold            # colour your party (name, &code, or #RRGGBB)
 /election party leave                 # return to the default party
 /election parties                     # list current parties and standings
 /election party rename Reform Unity   # admin: rename a party in this election
 ```
+
+**Party colours** are customizable: any candidate in a (non-default) party can
+set that party's colour with `/election party color <colour>`, accepting a colour
+name (`red`, `dark_blue`, ...), a legacy code (`&c`), or hex (`&#RRGGBB`). The
+colour is applied everywhere the party is shown — candidate lists, standings,
+the GUI, broadcasts, results, and placeholders — and is preserved in recorded
+results.
+
+When a resident registers with `/election run`, the plugin also sends them a
+short list of recommended next steps (set a campaign message, join a party,
+colour it, and write a profile).
 
 Candidate lists and final results show each candidate's party. Party standings
 show candidate counts, and show vote totals whenever live results are public or
@@ -304,6 +316,11 @@ console warning. Command placeholders: `{winner}`, `{winner_uuid}`, `{town}`,
 
 Durations accept friendly strings like `30s`, `10m`, `2h`, `3d`, `1w`, or
 combinations such as `1w3d12h`. Candidates can set a short campaign message and a longer candidate profile/bio for voters to read. Candidates can join an existing party or create a new party label with `/election party <name>`; tab completion suggests current parties. Party standings are available with `/election parties`, and final results include party-level vote totals plus winner command placeholders.
+
+By default (`campaign.lock-edits-during-voting: true`), candidates cannot change
+their campaign message, profile, party, or party colour once the voting phase has
+begun — these can only be edited during the nomination phase. Set it to `false`
+to allow edits at any time.
 
 ```yaml
 election:

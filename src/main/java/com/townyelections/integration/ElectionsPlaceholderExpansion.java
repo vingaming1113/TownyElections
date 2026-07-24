@@ -105,7 +105,8 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
                     return "";
                 }
                 Candidate candidate = election.getCandidate(player.getUniqueId());
-                return candidate == null ? "" : candidate.getPartyName();
+                return candidate == null ? ""
+                        : election.getPartyColor(candidate.getPartyName()) + candidate.getPartyName();
             }
             case "leading_party":
                 return election == null ? "" : leadingParty(election);
@@ -145,6 +146,7 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
                         .thenComparing(Map.Entry.comparingByKey(String.CASE_INSENSITIVE_ORDER)))
                 .map(Map.Entry::getKey)
                 .findFirst()
+                .map(name -> election.getPartyColor(name) + name)
                 .orElse("");
     }
 }

@@ -156,6 +156,11 @@ campaign:
   # 0 = unlimited. This only limits creating brand-new party labels; players
   # may always join a party that already exists or leave back to the default.
   max-parties: 0
+  # If true, candidates cannot change their campaign message, profile, party, or
+  # party colour once the voting phase has begun. These can only be edited during
+  # the nomination phase. Set to false to allow edits at any time.
+  lock-edits-during-voting: true
+
   # A simple denylist. Campaign messages containing any of these (case
   # insensitive) substrings are rejected.
   blocked-words:

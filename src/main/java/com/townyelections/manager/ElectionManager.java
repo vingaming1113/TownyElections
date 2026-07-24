@@ -154,6 +154,9 @@ public class ElectionManager {
         if (candidate == null) {
             return OperationResult.fail("candidate.not-a-candidate");
         }
+        if (editsLocked(election)) {
+            return OperationResult.fail("candidate.edits-locked");
+        }
         if (message == null || message.isBlank()) {
             return OperationResult.fail("campaign.empty");
         }
@@ -185,6 +188,9 @@ public class ElectionManager {
         if (candidate == null) {
             return OperationResult.fail("candidate.not-a-candidate");
         }
+        if (editsLocked(election)) {
+            return OperationResult.fail("candidate.edits-locked");
+        }
         if (profile == null || profile.isBlank()) {
             return OperationResult.fail("profile.empty");
         }
@@ -215,6 +221,9 @@ public class ElectionManager {
         if (candidate == null) {
             return OperationResult.fail("candidate.not-a-candidate");
         }
+        if (editsLocked(election)) {
+            return OperationResult.fail("candidate.edits-locked");
+        }
         candidate.setPartyName(config.getDefaultPartyName());
         save();
         return OperationResult.ok("party.left");
@@ -228,6 +237,9 @@ public class ElectionManager {
         Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
+        }
+        if (editsLocked(election)) {
+            return OperationResult.fail("candidate.edits-locked");
         }
         if (oldName == null || oldName.isBlank() || newName == null || newName.isBlank()) {
             return OperationResult.fail("party.rename-usage");
@@ -246,6 +258,7 @@ public class ElectionManager {
         if (renamed == 0) {
             return OperationResult.fail("party.no-such-party");
         }
+        election.renamePartyColor(oldName.trim(), trimmedNew);
         save();
         return OperationResult.ok("party.renamed");
     }
@@ -288,6 +301,9 @@ public class ElectionManager {
         if (candidate == null) {
             return OperationResult.fail("candidate.not-a-candidate");
         }
+        if (editsLocked(election)) {
+            return OperationResult.fail("candidate.edits-locked");
+        }
         if (partyName == null || partyName.isBlank()) {
             return OperationResult.fail("party.empty");
         }
@@ -304,10 +320,54 @@ public class ElectionManager {
         if (previousParty == null || !previousParty.equalsIgnoreCase(trimmed)) {
             broadcast(c, "party.joined-broadcast", MessageManager.placeholders(
                     "player", candidate.getName(),
-                    "party", trimmed,
+                    "party", partyDisplay(election, trimmed),
                     "town", c.getName()));
         }
         return OperationResult.ok("party.set");
+    }
+
+    public OperationResult setPartyColor(Resident resident, Town town, String colorInput) {
+        return setPartyColor(resident, towny.of(town), colorInput);
+    }
+
+    /** Set the colour of the candidate's (non-default) party for this election. */
+    public OperationResult setPartyColor(Resident resident, Constituency c, String colorInput) {
+        Election election = active.get(c.getUuid());
+        if (election == null) {
+            return OperationResult.fail("election.none-active");
+        }
+        Candidate candidate = election.getCandidate(resident.getUUID());
+        if (candidate == null) {
+            return OperationResult.fail("candidate.not-a-candidate");
+        }
+        if (editsLocked(election)) {
+            return OperationResult.fail("candidate.edits-locked");
+        }
+        String party = candidate.getPartyName();
+        if (party == null || party.isBlank() || party.equalsIgnoreCase(config.getDefaultPartyName())) {
+            return OperationResult.fail("party.color-needs-party");
+        }
+        String code = com.townyelections.util.TextUtil.parseColor(colorInput);
+        if (code == null) {
+            return OperationResult.fail("party.color-invalid");
+        }
+        election.setPartyColor(party, code);
+        save();
+        return OperationResult.ok("party.color-set", partyDisplay(election, party));
+    }
+
+    /** True when candidacy details are frozen because voting has begun. */
+    private boolean editsLocked(Election election) {
+        return config.isLockEditsDuringVoting() && election.getPhase() != ElectionPhase.NOMINATION;
+    }
+
+    /** A party name prefixed with its configured colour (falls back to no colour). */
+    public String partyDisplay(Election election, String party) {
+        if (election == null || party == null) {
+            return party;
+        }
+        String color = election.getPartyColor(party);
+        return color.isEmpty() ? party : color + party;
     }
 
     // ========================================================================
@@ -813,7 +873,8 @@ public class ElectionManager {
         for (UUID id : ranked) {
             Candidate c = election.getCandidate(id);
             if (c != null) {
-                standings.add(new ElectionResult.Standing(id, c.getName(), c.getPartyName(), tally.getOrDefault(id, 0)));
+                standings.add(new ElectionResult.Standing(id, c.getName(), c.getPartyName(),
+                        election.getPartyColor(c.getPartyName()), tally.getOrDefault(id, 0)));
             }
         }
 
@@ -838,7 +899,7 @@ public class ElectionManager {
         PartyStanding leadingParty = leadingParty(election, tally);
         if (leadingParty != null) {
             broadcast(constituency, "results.leading-party", MessageManager.placeholders(
-                    "party", leadingParty.name(),
+                    "party", partyDisplay(election, leadingParty.name()),
                     "votes", String.valueOf(leadingParty.votes())));
         }
 
@@ -846,11 +907,12 @@ public class ElectionManager {
             applyWinnerRewards(constituency, winnerCandidate, winnerVotes, election.getTotalVotes());
             broadcast(constituency, "winner.announce-town",
                     MessageManager.placeholders("winner", winnerCandidate.getName(),
-                            "party", winnerCandidate.getPartyName(), "town", constituency.getName()));
+                            "party", partyDisplay(election, winnerCandidate.getPartyName()),
+                            "town", constituency.getName()));
             if (config.isBroadcastServerWide()) {
                 Bukkit.broadcast(messages.prefixed(messages.raw("winner.announce-server")
                         .replace("{winner}", winnerCandidate.getName())
-                        .replace("{party}", winnerCandidate.getPartyName())
+                        .replace("{party}", partyDisplay(election, winnerCandidate.getPartyName()))
                         .replace("{town}", constituency.getName())));
             }
         } else {

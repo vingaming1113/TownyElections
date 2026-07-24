@@ -31,6 +31,9 @@ public class Election {
     /** candidate uuid -> Candidate */
     private final Map<UUID, Candidate> candidates = new LinkedHashMap<>();
 
+    /** lower-cased party name -> legacy colour code (e.g. "&c" or "&#aabbcc"). */
+    private final Map<String, String> partyColors = new LinkedHashMap<>();
+
     /**
      * voter uuid -> that voter's ballot. A ballot is an ordered candidate list:
      * a single entry under PLURALITY, a preference ranking under RANKED_CHOICE,
@@ -149,6 +152,43 @@ public class Election {
                     ballots.put(entry.getKey(), List.copyOf(updated));
                 }
             }
+        }
+    }
+
+    // ---- Party colours -----------------------------------------------------
+
+    /** The legacy colour code set for a party, or an empty string if none. */
+    public String getPartyColor(String party) {
+        if (party == null) {
+            return "";
+        }
+        return partyColors.getOrDefault(party.toLowerCase(java.util.Locale.ROOT), "");
+    }
+
+    public boolean hasPartyColor(String party) {
+        return party != null && partyColors.containsKey(party.toLowerCase(java.util.Locale.ROOT));
+    }
+
+    public void setPartyColor(String party, String colorCode) {
+        if (party == null || party.isBlank()) {
+            return;
+        }
+        String key = party.toLowerCase(java.util.Locale.ROOT);
+        if (colorCode == null || colorCode.isEmpty()) {
+            partyColors.remove(key);
+        } else {
+            partyColors.put(key, colorCode);
+        }
+    }
+
+    /** Move a colour from one party name to another (used when renaming a party). */
+    public void renamePartyColor(String oldName, String newName) {
+        if (oldName == null || newName == null) {
+            return;
+        }
+        String color = partyColors.remove(oldName.toLowerCase(java.util.Locale.ROOT));
+        if (color != null && !newName.isBlank()) {
+            partyColors.put(newName.toLowerCase(java.util.Locale.ROOT), color);
         }
     }
 
@@ -290,6 +330,13 @@ public class Election {
             List<String> choices = entry.getValue().stream().map(UUID::toString).toList();
             votesSection.set(entry.getKey().toString(), choices);
         }
+
+        if (!partyColors.isEmpty()) {
+            ConfigurationSection colorsSection = section.createSection("party-colors");
+            for (Map.Entry<String, String> entry : partyColors.entrySet()) {
+                colorsSection.set(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     public static Election deserialize(ConfigurationSection section) {
@@ -359,6 +406,16 @@ public class Election {
                 }
                 if (!ballot.isEmpty()) {
                     election.ballots.put(voter, List.copyOf(ballot));
+                }
+            }
+        }
+
+        ConfigurationSection colorsSection = section.getConfigurationSection("party-colors");
+        if (colorsSection != null) {
+            for (String key : colorsSection.getKeys(false)) {
+                String color = colorsSection.getString(key);
+                if (color != null && !color.isEmpty()) {
+                    election.partyColors.put(key.toLowerCase(java.util.Locale.ROOT), color);
                 }
             }
         }

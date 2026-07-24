@@ -4,6 +4,7 @@ import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
 import com.townyelections.integration.TownyHook;
+import com.townyelections.manager.CommandConfig;
 import com.townyelections.manager.ConfigManager;
 import com.townyelections.manager.ElectionManager;
 import com.townyelections.manager.MessageManager;
@@ -60,6 +61,7 @@ public class ElectionMenu implements Listener {
     private final ElectionManager elections;
     private final MessageManager messages;
     private final ConfigManager config;
+    private final com.townyelections.manager.CommandConfig commands;
     private final TownyHook towny;
     private final Map<UUID, PendingInput> pendingInputs = new ConcurrentHashMap<>();
 
@@ -68,6 +70,7 @@ public class ElectionMenu implements Listener {
         this.elections = plugin.getElectionManager();
         this.messages = plugin.getMessageManager();
         this.config = plugin.getConfigManager();
+        this.commands = plugin.getCommandConfig();
         this.towny = plugin.getTownyHook();
     }
 
@@ -375,10 +378,28 @@ public class ElectionMenu implements Listener {
         if (ctx == null) {
             return;
         }
-        respond(player, elections.registerCandidate(ctx.resident(), ctx.town()), MessageManager.placeholders(
+        OperationResult result = elections.registerCandidate(ctx.resident(), ctx.town());
+        respond(player, result, MessageManager.placeholders(
                 "town", ctx.town().getName(),
                 "max", String.valueOf(config.getMaxCandidates())));
+        if (result.isSuccess()) {
+            sendCandidacyTips(player);
+        }
         openMain(player);
+    }
+
+    /** Nudge a freshly-registered candidate toward setting up their campaign. */
+    private void sendCandidacyTips(Player player) {
+        Map<String, String> tips = MessageManager.placeholders(
+                "label", "election",
+                "campaign", commands.literal(CommandConfig.CAMPAIGN),
+                "party", commands.literal(CommandConfig.PARTY),
+                "profile", commands.literal(CommandConfig.PROFILE));
+        messages.sendNoPrefix(player, "candidate.recommend-header", null);
+        messages.sendNoPrefix(player, "candidate.recommend-campaign", tips);
+        messages.sendNoPrefix(player, "candidate.recommend-party", tips);
+        messages.sendNoPrefix(player, "candidate.recommend-color", tips);
+        messages.sendNoPrefix(player, "candidate.recommend-profile", tips);
     }
 
     private void handleWithdraw(Player player, UUID townUuid) {
@@ -609,7 +630,8 @@ public class ElectionMenu implements Listener {
 
         List<PartyEntry> parties = new ArrayList<>();
         for (Map.Entry<String, List<String>> entry : partyCandidates.entrySet()) {
-            parties.add(new PartyEntry(entry.getKey(), partyVotes.getOrDefault(entry.getKey(), 0), entry.getValue()));
+            parties.add(new PartyEntry(entry.getKey(), election.getPartyColor(entry.getKey()),
+                    partyVotes.getOrDefault(entry.getKey(), 0), entry.getValue()));
         }
         Comparator<PartyEntry> comparator = rankByVotes
                 ? Comparator.comparingInt(PartyEntry::votes).reversed()
@@ -635,7 +657,7 @@ public class ElectionMenu implements Listener {
 
     private ItemStack partyItem(PartyEntry party, boolean showVotes) {
         Map<String, String> placeholders = MessageManager.placeholders(
-                "party", party.name(),
+                "party", (party.color() == null ? "" : party.color()) + party.name(),
                 "party_votes", String.valueOf(party.votes()),
                 "count", String.valueOf(party.candidates().size()),
                 "candidates", String.join(", ", party.candidates()));
@@ -791,10 +813,10 @@ public class ElectionMenu implements Listener {
         };
         String time = election == null ? "-" : DurationUtil.format(election.getMillisRemaining());
         String candidateName = candidate == null ? "-" : candidate.getName();
-        String party = candidate == null ? "-" : candidate.getPartyName();
+        String party = candidate == null ? "-" : elections.partyDisplay(election, candidate.getPartyName());
         int votes = candidate == null ? 0 : tally.getOrDefault(candidate.getUuid(), 0);
         Candidate viewerCandidate = election == null || viewer == null ? null : election.getCandidate(viewer.getUUID());
-        String yourParty = viewerCandidate == null ? "-" : viewerCandidate.getPartyName();
+        String yourParty = viewerCandidate == null ? "-" : elections.partyDisplay(election, viewerCandidate.getPartyName());
         String yourCampaign = viewerCandidate == null ? "-" : viewerCandidate.getCampaignMessage();
         String yourProfile = viewerCandidate == null ? "-" : displayProfile(viewerCandidate);
         String voted = messages.raw("gui.vote-none");
@@ -837,7 +859,7 @@ public class ElectionMenu implements Listener {
         int turnout = (int) Math.round((result.getTotalVotes() * 100.0) / residents);
         String winnerParty = result.getStandings().stream()
                 .filter(entry -> result.getWinnerUuid() != null && entry.uuid.equals(result.getWinnerUuid()))
-                .map(entry -> entry.partyName)
+                .map(entry -> (entry.partyColor == null ? "" : entry.partyColor) + entry.partyName)
                 .findFirst()
                 .orElse(config.getDefaultPartyName());
         return MessageManager.placeholders(
@@ -846,7 +868,8 @@ public class ElectionMenu implements Listener {
                 "rounds", String.valueOf(result.getRounds().size()),
                 "rank", String.valueOf(rank),
                 "candidate", standing == null ? "-" : standing.name,
-                "party", standing == null ? "-" : standing.partyName,
+                "party", standing == null ? "-"
+                        : (standing.partyColor == null ? "" : standing.partyColor) + standing.partyName,
                 "candidate_votes", standing == null ? "0" : String.valueOf(standing.votes),
                 "percent", String.valueOf(percent),
                 "winner", result.hasWinner() ? result.getWinnerName() : messages.raw("results.no-winner"),
@@ -892,6 +915,6 @@ public class ElectionMenu implements Listener {
     private record PlayerContext(Resident resident, Town town) {
     }
 
-    private record PartyEntry(String name, int votes, List<String> candidates) {
+    private record PartyEntry(String name, String color, int votes, List<String> candidates) {
     }
 }

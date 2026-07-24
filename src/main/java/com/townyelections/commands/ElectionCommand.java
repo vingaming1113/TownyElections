@@ -51,6 +51,11 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     private final ConfigManager config;
     private final TownyHook towny;
 
+    private static final List<String> PARTY_COLOR_NAMES = List.of(
+            "red", "dark_red", "gold", "yellow", "green", "dark_green", "aqua", "cyan",
+            "blue", "dark_blue", "dark_aqua", "light_purple", "pink", "dark_purple",
+            "white", "gray", "dark_gray", "black");
+
     public ElectionCommand(TownyElections plugin) {
         this.plugin = plugin;
         this.elections = plugin.getElectionManager();
@@ -102,7 +107,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
         switch (action) {
             case CommandConfig.HELP -> sendHelp(sender, label);
-            case CommandConfig.RUN -> handleRun(sender, scope);
+            case CommandConfig.RUN -> handleRun(sender, label, scope);
             case CommandConfig.WITHDRAW -> handleWithdraw(sender, scope);
             case CommandConfig.CAMPAIGN -> handleCampaign(sender, rest, label, scope);
             case CommandConfig.PROFILE -> handleProfile(sender, rest, label, scope);
@@ -165,7 +170,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
     // ---- Candidacy ---------------------------------------------------------
 
-    private void handleRun(CommandSender sender, ElectionScope scope) {
+    private void handleRun(CommandSender sender, String label, ElectionScope scope) {
         if (!sender.hasPermission("townyelections.candidate")) {
             messages.send(sender, "general.no-permission");
             return;
@@ -174,10 +179,27 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         if (ctx == null) {
             return;
         }
-        respond(sender, elections.registerCandidate(ctx.resident(), ctx.constituency()),
-                MessageManager.placeholders(
-                        "town", ctx.constituency().getName(),
-                        "max", String.valueOf(config.getMaxCandidates())));
+        OperationResult result = elections.registerCandidate(ctx.resident(), ctx.constituency());
+        respond(sender, result, MessageManager.placeholders(
+                "town", ctx.constituency().getName(),
+                "max", String.valueOf(config.getMaxCandidates())));
+        if (result.isSuccess()) {
+            sendCandidacyTips(sender, label, scope);
+        }
+    }
+
+    /** Nudge a freshly-registered candidate toward setting up their campaign. */
+    private void sendCandidacyTips(CommandSender sender, String label, ElectionScope scope) {
+        Map<String, String> tips = MessageManager.placeholders(
+                "label", label,
+                "campaign", literal(CommandConfig.CAMPAIGN, scope),
+                "party", literal(CommandConfig.PARTY, scope),
+                "profile", literal(CommandConfig.PROFILE, scope));
+        messages.sendNoPrefix(sender, "candidate.recommend-header", null);
+        messages.sendNoPrefix(sender, "candidate.recommend-campaign", tips);
+        messages.sendNoPrefix(sender, "candidate.recommend-party", tips);
+        messages.sendNoPrefix(sender, "candidate.recommend-color", tips);
+        messages.sendNoPrefix(sender, "candidate.recommend-profile", tips);
     }
 
     private void handleWithdraw(CommandSender sender, ElectionScope scope) {
@@ -271,9 +293,23 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 return;
             }
             messages.send(sender, "party.current", MessageManager.placeholders(
-                    "party", candidate.getPartyName(),
+                    "party", elections.partyDisplay(election, candidate.getPartyName()),
                     "label", label,
                     "party_command", literal(CommandConfig.PARTY, scope)));
+            return;
+        }
+        if (rest.length >= 1 && rest[0].equalsIgnoreCase("color")) {
+            if (rest.length < 2) {
+                messages.send(sender, "party.color-usage", MessageManager.placeholders(
+                        "label", label, "party", literal(CommandConfig.PARTY, scope)));
+                return;
+            }
+            OperationResult colorResult = elections.setPartyColor(ctx.resident(), ctx.constituency(), rest[1]);
+            Map<String, String> colorPh = MessageManager.placeholders("color", rest[1]);
+            if (colorResult.isSuccess() && colorResult.getPayload() instanceof String display) {
+                colorPh.put("party", display);
+            }
+            respond(sender, colorResult, colorPh);
             return;
         }
         if (rest.length == 1 && rest[0].equalsIgnoreCase("leave")) {
@@ -282,10 +318,16 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             return;
         }
         String partyName = String.join(" ", rest);
-        respond(sender, elections.setPartyName(ctx.resident(), ctx.constituency(), partyName),
-                MessageManager.placeholders(
-                        "party", partyName.trim(),
-                        "max", String.valueOf(config.getMaxPartyNameLength())));
+        OperationResult partyResult = elections.setPartyName(ctx.resident(), ctx.constituency(), partyName);
+        Map<String, String> partyPh = MessageManager.placeholders(
+                "party", partyName.trim(),
+                "max", String.valueOf(config.getMaxPartyNameLength()));
+        if (partyResult.isSuccess()) {
+            Election election = electionOf(ctx);
+            partyPh.put("party", election == null ? partyName.trim()
+                    : elections.partyDisplay(election, partyName.trim()));
+        }
+        respond(sender, partyResult, partyPh);
     }
 
     private void handlePartyRename(CommandSender sender, PlayerContext ctx, String[] rest, String label,
@@ -413,7 +455,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.sendNoPrefix(sender, "status.your-vote",
                     MessageManager.placeholders(
                             "choice", c == null ? "?" : c.getName(),
-                            "party", c == null ? "?" : c.getPartyName()));
+                            "party", c == null ? "?" : elections.partyDisplay(election, c.getPartyName())));
         } else {
             messages.sendNoPrefix(sender, "status.your-ballot", MessageManager.placeholders(
                     "ballot", elections.describeBallot(election, ctx.resident().getUUID())));
@@ -450,14 +492,14 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             if (showVotes) {
                 messages.sendNoPrefix(sender, "status.candidate-entry", MessageManager.placeholders(
                         "candidate", c.getName(),
-                        "party", c.getPartyName(),
+                        "party", elections.partyDisplay(election, c.getPartyName()),
                         "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0)),
                         "message", c.getCampaignMessage(),
                         "profile", displayProfile(c)));
             } else {
                 messages.sendNoPrefix(sender, "status.candidate-entry-hidden", MessageManager.placeholders(
                         "candidate", c.getName(),
-                        "party", c.getPartyName(),
+                        "party", elections.partyDisplay(election, c.getPartyName()),
                         "message", c.getCampaignMessage(),
                         "profile", displayProfile(c)));
             }
@@ -510,7 +552,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         for (String party : rankedParties(partyCandidates, partyVotes, showVotes)) {
             List<String> candidates = partyCandidates.get(party);
             Map<String, String> placeholders = MessageManager.placeholders(
-                    "party", party,
+                    "party", elections.partyDisplay(election, party),
                     "count", String.valueOf(candidates.size()),
                     "candidates", String.join(", ", candidates),
                     "votes", String.valueOf(partyVotes.getOrDefault(party, 0)));
@@ -544,6 +586,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     private void printResultPartyList(CommandSender sender, ElectionResult result) {
         Map<String, List<String>> partyCandidates = new LinkedHashMap<>();
         Map<String, Integer> partyVotes = new LinkedHashMap<>();
+        Map<String, String> partyColorCodes = new LinkedHashMap<>();
 
         for (ElectionResult.Standing standing : result.getStandings()) {
             String party = standing.partyName == null || standing.partyName.isBlank()
@@ -554,6 +597,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             }
             partyCandidates.computeIfAbsent(party, ignored -> new ArrayList<>()).add(standing.name);
             partyVotes.merge(party, standing.votes, Integer::sum);
+            partyColorCodes.putIfAbsent(party, standing.partyColor);
         }
 
         messages.sendNoPrefix(sender, "parties.result-header",
@@ -564,12 +608,19 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         }
         for (String party : rankedParties(partyCandidates, partyVotes, true)) {
             List<String> candidates = partyCandidates.get(party);
+            String color = partyColorCodes.getOrDefault(party, "");
             messages.sendNoPrefix(sender, "parties.entry", MessageManager.placeholders(
-                    "party", party,
+                    "party", (color == null ? "" : color) + party,
                     "count", String.valueOf(candidates.size()),
                     "candidates", String.join(", ", candidates),
                     "votes", String.valueOf(partyVotes.getOrDefault(party, 0))));
         }
+    }
+
+    /** A result standing's party name prefixed with its recorded colour code. */
+    private String standingParty(ElectionResult.Standing standing) {
+        String color = standing.partyColor == null ? "" : standing.partyColor;
+        return color + standing.partyName;
     }
 
     private List<String> rankedParties(Map<String, List<String>> partyCandidates,
@@ -626,7 +677,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.sendNoPrefix(sender, "results.line", MessageManager.placeholders(
                     "rank", String.valueOf(rank++),
                     "candidate", standing.name,
-                    "party", standing.partyName,
+                    "party", standingParty(standing),
                     "votes", String.valueOf(standing.votes),
                     "percent", String.valueOf(percent)));
         }
@@ -637,7 +688,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         if (result.hasWinner()) {
             String winnerParty = result.getStandings().stream()
                     .filter(standing -> standing.uuid.equals(result.getWinnerUuid()))
-                    .map(standing -> standing.partyName)
+                    .map(this::standingParty)
                     .findFirst()
                     .orElse(config.getDefaultPartyName());
             messages.sendNoPrefix(sender, "results.winner", MessageManager.placeholders(
@@ -767,6 +818,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.sendNoPrefix(sender, "help.campaign", base);
         messages.sendNoPrefix(sender, "help.profile", base);
         messages.sendNoPrefix(sender, "help.party", base);
+        messages.sendNoPrefix(sender, "help.party-color", base);
         messages.sendNoPrefix(sender, "help.parties", base);
         messages.sendNoPrefix(sender, "help.vote", base);
         messages.sendNoPrefix(sender, "help.status", base);
@@ -824,8 +876,23 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                     }
                 }
             }
-            // Suggest existing party names when choosing an affiliation.
+            // Suggest party sub-actions, colours, and existing party names.
             if (CommandConfig.PARTY.equals(action) && sender instanceof Player player) {
+                if (args.length >= 2 && args[1].equalsIgnoreCase("color")) {
+                    for (String color : PARTY_COLOR_NAMES) {
+                        if (color.startsWith(partial)) {
+                            out.add(color);
+                        }
+                    }
+                    return out;
+                }
+                if (args.length == 2) {
+                    for (String sub : List.of("color", "leave")) {
+                        if (sub.startsWith(partial)) {
+                            out.add(sub);
+                        }
+                    }
+                }
                 Election election = playerElection(player, scope);
                 if (election != null) {
                     String partyInput = String.join(" ", Arrays.copyOfRange(args, 1, args.length)).toLowerCase();

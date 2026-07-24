@@ -19,17 +19,23 @@ public class ElectionResult {
         public final UUID uuid;
         public final String name;
         public final String partyName;
+        public final String partyColor;
         public final int votes;
 
-        public Standing(UUID uuid, String name, String partyName, int votes) {
+        public Standing(UUID uuid, String name, String partyName, String partyColor, int votes) {
             this.uuid = uuid;
             this.name = name;
             this.partyName = partyName;
+            this.partyColor = partyColor == null ? "" : partyColor;
             this.votes = votes;
         }
 
+        public Standing(UUID uuid, String name, String partyName, int votes) {
+            this(uuid, name, partyName, "", votes);
+        }
+
         public Standing(UUID uuid, String name, int votes) {
-            this(uuid, name, "Independent", votes);
+            this(uuid, name, "Independent", "", votes);
         }
     }
 
@@ -138,6 +144,9 @@ public class ElectionResult {
             s.set("uuid", standing.uuid.toString());
             s.set("name", standing.name);
             s.set("party-name", standing.partyName);
+            if (standing.partyColor != null && !standing.partyColor.isEmpty()) {
+                s.set("party-color", standing.partyColor);
+            }
             s.set("votes", standing.votes);
         }
 
@@ -205,7 +214,8 @@ public class ElectionResult {
                 try {
                     UUID uuid = UUID.fromString(s.getString("uuid", ""));
                     standings.add(new Standing(uuid, s.getString("name", "Unknown"),
-                            s.getString("party-name", "Independent"), s.getInt("votes", 0)));
+                            s.getString("party-name", "Independent"),
+                            s.getString("party-color", ""), s.getInt("votes", 0)));
                 } catch (IllegalArgumentException ignored) {
                     // skip
                 }
