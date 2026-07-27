@@ -672,7 +672,11 @@ public class ElectionManager {
                 }
                 default -> {
                     // CONCLUDED / CANCELLED should not linger in the active map.
-                    active.remove(election.getTownUuid());
+                    // Persist the removal, otherwise the stale election is only
+                    // dropped in memory and load() restores it on every restart.
+                    if (active.remove(election.getTownUuid()) != null) {
+                        save();
+                    }
                 }
             }
         }
