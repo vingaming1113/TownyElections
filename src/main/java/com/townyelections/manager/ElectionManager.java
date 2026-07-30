@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -55,6 +56,9 @@ public class ElectionManager {
     private final Map<UUID, ElectionResult> results = new ConcurrentHashMap<>();
     /** town uuid -> epoch millis at which an auto-scheduled election may next start */
     private final Map<UUID, Long> nextAutoStart = new ConcurrentHashMap<>();
+
+    /** constituency uuid -> lowercase party name -> party. Outlives elections. */
+    private final Map<UUID, Map<String, StandingParty>> standingParties = new ConcurrentHashMap<>();
 
     private final File dataFile;
 
@@ -112,8 +116,11 @@ public class ElectionManager {
             return OperationResult.fail("candidate.max-reached");
         }
 
+        String standing = standingPartyOf(c.getUuid(), resident.getUUID());
         Candidate candidate = new Candidate(resident.getUUID(), resident.getName(),
-                config.getDefaultCampaignMessage(), config.getDefaultPartyName(), System.currentTimeMillis());
+                config.getDefaultCampaignMessage(),
+                standing != null ? standing : config.getDefaultPartyName(),
+                System.currentTimeMillis());
         election.addCandidate(candidate);
         save();
 
@@ -295,7 +302,7 @@ public class ElectionManager {
     public OperationResult setPartyName(Resident resident, Constituency c, String partyName) {
         Election election = active.get(c.getUuid());
         if (election == null) {
-            return OperationResult.fail("election.none-active");
+            return joinStandingParty(resident, c, partyName);
         }
         Candidate candidate = election.getCandidate(resident.getUUID());
         if (candidate == null) {
@@ -316,6 +323,7 @@ public class ElectionManager {
         }
         String previousParty = candidate.getPartyName();
         candidate.setPartyName(trimmed);
+        recordStanding(c.getUuid(), trimmed, resident.getUUID());
         save();
         if (previousParty == null || !previousParty.equalsIgnoreCase(trimmed)) {
             broadcast(c, "party.joined-broadcast", MessageManager.placeholders(
@@ -1105,6 +1113,91 @@ public class ElectionManager {
         return literal;
     }
 
+
+    // ========================================================================
+    //  Standing parties
+    //
+    //  A party used to exist only as a string on a candidate inside a running
+    //  election, so it could not be created between elections and vanished
+    //  when one ended. These persist independently of any election.
+    // ========================================================================
+
+    public static final class StandingParty {
+        public final String name;
+        public final Set<UUID> members = new java.util.LinkedHashSet<>();
+
+        public StandingParty(String name) {
+            this.name = name;
+        }
+    }
+
+    public Collection<StandingParty> getStandingParties(Constituency c) {
+        Map<String, StandingParty> m = standingParties.get(c.getUuid());
+        return m == null ? java.util.List.of() : m.values();
+    }
+
+    public String standingPartyOf(UUID constituency, UUID member) {
+        Map<String, StandingParty> m = standingParties.get(constituency);
+        if (m == null) {
+            return null;
+        }
+        for (StandingParty p : m.values()) {
+            if (p.members.contains(member)) {
+                return p.name;
+            }
+        }
+        return null;
+    }
+
+    private void recordStanding(UUID constituency, String name, UUID member) {
+        Map<String, StandingParty> m =
+                standingParties.computeIfAbsent(constituency, k -> new ConcurrentHashMap<>());
+        for (StandingParty p : m.values()) {
+            p.members.remove(member);
+        }
+        m.computeIfAbsent(name.toLowerCase(Locale.ROOT), k -> new StandingParty(name))
+                .members.add(member);
+    }
+
+    public OperationResult joinStandingParty(Resident resident, Constituency c, String partyName) {
+        if (partyName == null || partyName.isBlank()) {
+            return OperationResult.fail("party.empty");
+        }
+        String trimmed = partyName.trim();
+        if (trimmed.length() > config.getMaxPartyNameLength()) {
+            return OperationResult.fail("party.too-long");
+        }
+        if (!c.isResident(resident.getUUID())) {
+            return OperationResult.fail("candidate.not-a-resident");
+        }
+        Map<String, StandingParty> m =
+                standingParties.computeIfAbsent(c.getUuid(), k -> new ConcurrentHashMap<>());
+        int max = config.getMaxParties();
+        if (max > 0 && !m.containsKey(trimmed.toLowerCase(Locale.ROOT)) && m.size() >= max) {
+            return OperationResult.fail("party.max-parties");
+        }
+        recordStanding(c.getUuid(), trimmed, resident.getUUID());
+        save();
+        return OperationResult.ok("party.set");
+    }
+
+    public OperationResult leaveStandingParty(Resident resident, Constituency c) {
+        Map<String, StandingParty> m = standingParties.get(c.getUuid());
+        if (m == null) {
+            return OperationResult.fail("party.no-such-party");
+        }
+        boolean removed = false;
+        for (StandingParty p : m.values()) {
+            removed |= p.members.remove(resident.getUUID());
+        }
+        m.values().removeIf(p -> p.members.isEmpty());
+        if (!removed) {
+            return OperationResult.fail("party.no-such-party");
+        }
+        save();
+        return OperationResult.ok("party.left");
+    }
+
     // ========================================================================
     //  Persistence
     // ========================================================================
@@ -1122,6 +1215,15 @@ public class ElectionManager {
         i = 0;
         for (ElectionResult result : results.values()) {
             result.serialize(resultsSection.createSection("r" + (i++)));
+        }
+
+        ConfigurationSection partySection = yaml.createSection("standing-parties");
+        for (Map.Entry<UUID, Map<String, StandingParty>> entry : standingParties.entrySet()) {
+            ConfigurationSection cs = partySection.createSection(entry.getKey().toString());
+            for (StandingParty p : entry.getValue().values()) {
+                ConfigurationSection ps = cs.createSection(p.name);
+                ps.set("members", p.members.stream().map(UUID::toString).toList());
+            }
         }
 
         ConfigurationSection scheduleSection = yaml.createSection("next-auto-start");
@@ -1143,6 +1245,7 @@ public class ElectionManager {
         active.clear();
         results.clear();
         nextAutoStart.clear();
+        standingParties.clear();
         if (!dataFile.exists()) {
             return;
         }
@@ -1164,6 +1267,39 @@ public class ElectionManager {
                 ElectionResult result = ElectionResult.deserialize(resultsSection.getConfigurationSection(key));
                 if (result != null) {
                     results.put(result.getTownUuid(), result);
+                }
+            }
+        }
+
+        ConfigurationSection partySection = yaml.getConfigurationSection("standing-parties");
+        if (partySection != null) {
+            for (String cKey : partySection.getKeys(false)) {
+                ConfigurationSection cs = partySection.getConfigurationSection(cKey);
+                if (cs == null) {
+                    continue;
+                }
+                UUID cUuid;
+                try {
+                    cUuid = UUID.fromString(cKey);
+                } catch (IllegalArgumentException ex) {
+                    continue;
+                }
+                Map<String, StandingParty> m = new ConcurrentHashMap<>();
+                for (String pName : cs.getKeys(false)) {
+                    StandingParty p = new StandingParty(pName);
+                    for (String mu : cs.getStringList(pName + ".members")) {
+                        try {
+                            p.members.add(UUID.fromString(mu));
+                        } catch (IllegalArgumentException ignored) {
+                            // skip malformed
+                        }
+                    }
+                    if (!p.members.isEmpty()) {
+                        m.put(pName.toLowerCase(Locale.ROOT), p);
+                    }
+                }
+                if (!m.isEmpty()) {
+                    standingParties.put(cUuid, m);
                 }
             }
         }

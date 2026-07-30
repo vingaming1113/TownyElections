@@ -289,7 +289,16 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             Election election = electionOf(ctx);
             Candidate candidate = election == null ? null : election.getCandidate(ctx.resident().getUUID());
             if (candidate == null) {
-                messages.send(sender, "candidate.not-a-candidate");
+                String standing = elections.standingPartyOf(
+                        ctx.constituency().getUuid(), ctx.resident().getUUID());
+                if (standing == null) {
+                    messages.send(sender, "candidate.not-a-candidate");
+                } else {
+                    messages.send(sender, "party.current", MessageManager.placeholders(
+                            "party", standing,
+                            "label", label,
+                            "party_command", literal(CommandConfig.PARTY, scope)));
+                }
                 return;
             }
             messages.send(sender, "party.current", MessageManager.placeholders(
@@ -517,10 +526,24 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         }
         Election election = electionOf(ctx);
         if (election == null) {
-            messages.send(sender, "election.none-active");
+            printStandingPartyList(sender, ctx);
             return;
         }
         printPartyList(sender, election, ctx.constituency().getName());
+    }
+
+    private void printStandingPartyList(CommandSender sender, PlayerContext ctx) {
+        var parties = elections.getStandingParties(ctx.constituency());
+        if (parties.isEmpty()) {
+            messages.send(sender, "election.none-active");
+            return;
+        }
+        messages.sendNoPrefix(sender, "party.standing-header", MessageManager.placeholders(
+                "town", ctx.constituency().getName()));
+        for (var p : parties) {
+            messages.sendNoPrefix(sender, "party.standing-entry", MessageManager.placeholders(
+                    "party", p.name, "members", String.valueOf(p.members.size())));
+        }
     }
 
     private void printPartyList(CommandSender sender, Election election, String townName) {

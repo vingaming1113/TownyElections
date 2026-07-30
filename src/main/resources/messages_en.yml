@@ -81,6 +81,8 @@ party:
   renamed: "&aRenamed political party &f{old}&a to &f{new}&a for this election."
   no-such-party: "&cNo current party named &f{old}&c exists in this election."
   max-parties: "&cThis election has reached the maximum number of political parties."
+  standing-header: "&7Political parties in &f{town}&7:"
+  standing-entry: "&7- &f{party} &7({members} members)"
   joined-broadcast: "&e{player}&7 is now campaigning with &f{party}&7 in &f{town}&7."
   rename-usage: "&cUsage: &f/{label} {party} rename <old> <new>"
   too-long: "&cYour political party name is too long (max &e{max}&c characters)."
