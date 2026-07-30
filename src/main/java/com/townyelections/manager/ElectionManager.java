@@ -222,18 +222,34 @@ public class ElectionManager {
     public OperationResult leaveParty(Resident resident, Constituency c) {
         Election election = active.get(c.getUuid());
         if (election == null) {
-            return OperationResult.fail("election.none-active");
+            return leaveStandingPartyAsPlayer(resident, c);
         }
         Candidate candidate = election.getCandidate(resident.getUUID());
         if (candidate == null) {
-            return OperationResult.fail("candidate.not-a-candidate");
+            // Not a candidate: drop any standing-party membership instead.
+            return leaveStandingPartyAsPlayer(resident, c);
         }
         if (editsLocked(election)) {
             return OperationResult.fail("candidate.edits-locked");
         }
         candidate.setPartyName(config.getDefaultPartyName());
+        // Keep the standing registry in sync: leaving a party removes the
+        // resident's standing membership so it does not survive the election.
+        removeStandingMember(c.getUuid(), resident.getUUID());
         save();
         return OperationResult.ok("party.left");
+    }
+
+    /**
+     * Remove a resident's standing-party membership for the leave command,
+     * returning a user-friendly "not in a party" failure when they had none.
+     */
+    private OperationResult leaveStandingPartyAsPlayer(Resident resident, Constituency c) {
+        if (removeStandingMember(c.getUuid(), resident.getUUID())) {
+            save();
+            return OperationResult.ok("party.left");
+        }
+        return OperationResult.fail("party.not-in-party");
     }
 
     public OperationResult renameParty(Town town, String oldName, String newName) {
@@ -1159,6 +1175,23 @@ public class ElectionManager {
                 .members.add(member);
     }
 
+    /**
+     * Remove a member from every standing party in a constituency and prune
+     * parties left empty. Returns true if the member belonged to any party.
+     */
+    private boolean removeStandingMember(UUID constituency, UUID member) {
+        Map<String, StandingParty> m = standingParties.get(constituency);
+        if (m == null) {
+            return false;
+        }
+        boolean removed = false;
+        for (StandingParty p : m.values()) {
+            removed |= p.members.remove(member);
+        }
+        m.values().removeIf(p -> p.members.isEmpty());
+        return removed;
+    }
+
     public OperationResult joinStandingParty(Resident resident, Constituency c, String partyName) {
         if (partyName == null || partyName.isBlank()) {
             return OperationResult.fail("party.empty");
@@ -1182,20 +1215,22 @@ public class ElectionManager {
     }
 
     public OperationResult leaveStandingParty(Resident resident, Constituency c) {
-        Map<String, StandingParty> m = standingParties.get(c.getUuid());
-        if (m == null) {
-            return OperationResult.fail("party.no-such-party");
-        }
-        boolean removed = false;
-        for (StandingParty p : m.values()) {
-            removed |= p.members.remove(resident.getUUID());
-        }
-        m.values().removeIf(p -> p.members.isEmpty());
-        if (!removed) {
+        if (!removeStandingMember(c.getUuid(), resident.getUUID())) {
             return OperationResult.fail("party.no-such-party");
         }
         save();
         return OperationResult.ok("party.left");
+    }
+
+    /**
+     * Remove a resident's standing-party membership for a constituency without
+     * feedback, used when they leave the town/nation so stale memberships do
+     * not survive restarts.
+     */
+    public void clearStandingMembership(UUID constituencyUuid, UUID residentUuid) {
+        if (removeStandingMember(constituencyUuid, residentUuid)) {
+            save();
+        }
     }
 
     // ========================================================================

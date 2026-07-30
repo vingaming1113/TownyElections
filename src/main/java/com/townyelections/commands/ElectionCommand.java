@@ -534,13 +534,23 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
     private void printStandingPartyList(CommandSender sender, PlayerContext ctx) {
         var parties = elections.getStandingParties(ctx.constituency());
-        if (parties.isEmpty()) {
-            messages.send(sender, "election.none-active");
+        String defaultParty = config.getDefaultPartyName();
+        boolean hideDefault = config.isHideDefaultPartyFromStandings();
+        List<ElectionManager.StandingParty> visible = new ArrayList<>();
+        for (ElectionManager.StandingParty p : parties) {
+            if (hideDefault && p.name.equalsIgnoreCase(defaultParty)) {
+                continue;
+            }
+            visible.add(p);
+        }
+        if (visible.isEmpty()) {
+            messages.send(sender, "party.standing-none", MessageManager.placeholders(
+                    "town", ctx.constituency().getName()));
             return;
         }
         messages.sendNoPrefix(sender, "party.standing-header", MessageManager.placeholders(
                 "town", ctx.constituency().getName()));
-        for (var p : parties) {
+        for (ElectionManager.StandingParty p : visible) {
             messages.sendNoPrefix(sender, "party.standing-entry", MessageManager.placeholders(
                     "party", p.name, "members", String.valueOf(p.members.size())));
         }

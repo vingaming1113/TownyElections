@@ -128,6 +128,8 @@ public class PlayerListener implements Listener {
     private void cleanupTown(Resident resident, Town town) {
         Election election = elections.getElection(town.getUUID());
         removeFromElection(resident, election);
+        // Drop any standing-party membership so it does not linger after leaving.
+        elections.clearStandingMembership(town.getUUID(), resident.getUUID());
     }
 
     /**
@@ -136,15 +138,16 @@ public class PlayerListener implements Listener {
      * nation election if they are no longer a resident of the nation.
      */
     private void cleanupNation(Resident resident, Nation nation) {
-        Election election = elections.getElection(nation.getUUID());
-        if (election == null) {
+        Constituency constituency = plugin.getTownyHook().of(nation);
+        if (constituency == null) {
             return;
         }
-        Constituency constituency = plugin.getTownyHook().of(nation);
         if (constituency.isResident(resident.getUUID())) {
             return;
         }
+        Election election = elections.getElection(nation.getUUID());
         removeFromElection(resident, election);
+        elections.clearStandingMembership(nation.getUUID(), resident.getUUID());
     }
 
     private void removeFromElection(Resident resident, Election election) {

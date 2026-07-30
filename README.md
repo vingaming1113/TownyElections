@@ -200,16 +200,26 @@ their own inventory.
 
 ### Political parties
 
-Parties are active-election labels that candidates can join, create, leave, or
-admin-rename without changing the core individual-winner election rules.
+Parties are labels that residents can join, create, leave, or admin-rename
+without changing the core individual-winner election rules. Parties **persist
+between elections**: a resident can join or create a party at any time — even
+when no election is running — and their membership carries over so they are
+already in that party when the next election starts. When an election is
+active, candidates' party choices are also written back to the standing
+registry so they survive the election ending.
 
 ```text
-/election party Reform Coalition      # join or create a party
-/election party color gold            # colour your party (name, &code, or #RRGGBB)
-/election party leave                 # return to the default party
-/election parties                     # list current parties and standings
+/election party Reform Coalition      # join or create a party (works without an active election)
+/election party color gold            # colour your party (name, &code, or #RRGGBB; requires an active election)
+/election party leave                 # leave your standing party / return to the default party
+/election parties                     # list current parties and standings (shows standing parties when no election is active)
 /election party rename Reform Unity   # admin: rename a party in this election
 ```
+
+When a resident leaves their town (or nation), their standing-party membership
+is automatically cleared so no stale parties linger. Standing parties are
+persisted in `data.yml` under the `standing-parties` section and reload safely
+across restarts; old data files without that section load unchanged.
 
 **Party colours** are customizable: any candidate in a (non-default) party can
 set that party's colour with `/election party color <colour>`, accepting a colour

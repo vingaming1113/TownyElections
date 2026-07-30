@@ -83,6 +83,8 @@ party:
   max-parties: "&cThis election has reached the maximum number of political parties."
   standing-header: "&7Political parties in &f{town}&7:"
   standing-entry: "&7- &f{party} &7({members} members)"
+  standing-none: "&7There are no standing political parties in &f{town}&7 yet."
+  not-in-party: "&cYou are not currently in a party."
   joined-broadcast: "&e{player}&7 is now campaigning with &f{party}&7 in &f{town}&7."
   rename-usage: "&cUsage: &f/{label} {party} rename <old> <new>"
   too-long: "&cYour political party name is too long (max &e{max}&c characters)."
