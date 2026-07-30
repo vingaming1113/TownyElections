@@ -232,6 +232,7 @@ public class ElectionManager {
             return OperationResult.fail("candidate.edits-locked");
         }
         candidate.setPartyName(config.getDefaultPartyName());
+        clearStanding(c.getUuid(), resident.getUUID());
         save();
         return OperationResult.ok("party.left");
     }
@@ -1149,6 +1150,17 @@ public class ElectionManager {
         return null;
     }
 
+    private void clearStanding(UUID constituency, UUID member) {
+        Map<String, StandingParty> m = standingParties.get(constituency);
+        if (m == null) {
+            return;
+        }
+        for (StandingParty p : m.values()) {
+            p.members.remove(member);
+        }
+        m.values().removeIf(p -> p.members.isEmpty());
+    }
+
     private void recordStanding(UUID constituency, String name, UUID member) {
         Map<String, StandingParty> m =
                 standingParties.computeIfAbsent(constituency, k -> new ConcurrentHashMap<>());
@@ -1173,8 +1185,16 @@ public class ElectionManager {
         Map<String, StandingParty> m =
                 standingParties.computeIfAbsent(c.getUuid(), k -> new ConcurrentHashMap<>());
         int max = config.getMaxParties();
-        if (max > 0 && !m.containsKey(trimmed.toLowerCase(Locale.ROOT)) && m.size() >= max) {
-            return OperationResult.fail("party.max-parties");
+        if (max > 0 && !m.containsKey(trimmed.toLowerCase(Locale.ROOT))) {
+            int counted = 0;
+            for (StandingParty p : m.values()) {
+                if (!p.name.equalsIgnoreCase(config.getDefaultPartyName())) {
+                    counted++;
+                }
+            }
+            if (counted >= max) {
+                return OperationResult.fail("party.max-parties");
+            }
         }
         recordStanding(c.getUuid(), trimmed, resident.getUUID());
         save();
@@ -1220,8 +1240,10 @@ public class ElectionManager {
         ConfigurationSection partySection = yaml.createSection("standing-parties");
         for (Map.Entry<UUID, Map<String, StandingParty>> entry : standingParties.entrySet()) {
             ConfigurationSection cs = partySection.createSection(entry.getKey().toString());
+            int pi = 0;
             for (StandingParty p : entry.getValue().values()) {
-                ConfigurationSection ps = cs.createSection(p.name);
+                ConfigurationSection ps = cs.createSection("p" + (pi++));
+                ps.set("name", p.name);
                 ps.set("members", p.members.stream().map(UUID::toString).toList());
             }
         }
@@ -1285,9 +1307,10 @@ public class ElectionManager {
                     continue;
                 }
                 Map<String, StandingParty> m = new ConcurrentHashMap<>();
-                for (String pName : cs.getKeys(false)) {
+                for (String pKey : cs.getKeys(false)) {
+                    String pName = cs.getString(pKey + ".name", pKey);
                     StandingParty p = new StandingParty(pName);
-                    for (String mu : cs.getStringList(pName + ".members")) {
+                    for (String mu : cs.getStringList(pKey + ".members")) {
                         try {
                             p.members.add(UUID.fromString(mu));
                         } catch (IllegalArgumentException ignored) {
@@ -1295,7 +1318,7 @@ public class ElectionManager {
                         }
                     }
                     if (!p.members.isEmpty()) {
-                        m.put(pName.toLowerCase(Locale.ROOT), p);
+                        m.put(p.name.toLowerCase(Locale.ROOT), p);
                     }
                 }
                 if (!m.isEmpty()) {

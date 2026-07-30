@@ -420,3 +420,14 @@ mvn clean package
 ## License
 
 Licensed under the [MIT License](LICENSE). Adapt freely for your server.
+
+### Parties between elections
+
+Parties are stored per town/nation and persist independently of any election.
+
+- `/election party <name>` works with no election running; it creates or joins a
+  standing party. During an election it also updates that registry, so a party
+  survives the election ending.
+- `/election party leave` leaves a standing party when no election is running.
+- `/election parties` lists standing parties between elections.
+- Registering as a candidate seeds your party from the registry automatically.

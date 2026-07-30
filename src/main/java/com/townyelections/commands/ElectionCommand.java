@@ -322,6 +322,11 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (rest.length == 1 && rest[0].equalsIgnoreCase("leave")) {
+            if (electionOf(ctx) == null) {
+                respond(sender, elections.leaveStandingParty(ctx.resident(), ctx.constituency()),
+                        MessageManager.placeholders("party", config.getDefaultPartyName()));
+                return;
+            }
             respond(sender, elections.leaveParty(ctx.resident(), ctx.constituency()),
                     MessageManager.placeholders("party", config.getDefaultPartyName()));
             return;
@@ -533,9 +538,13 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     }
 
     private void printStandingPartyList(CommandSender sender, PlayerContext ctx) {
-        var parties = elections.getStandingParties(ctx.constituency());
+        var all = elections.getStandingParties(ctx.constituency());
+        var parties = new java.util.ArrayList<>(all);
+        if (config.isHideDefaultPartyFromStandings()) {
+            parties.removeIf(p -> p.name.equalsIgnoreCase(config.getDefaultPartyName()));
+        }
         if (parties.isEmpty()) {
-            messages.send(sender, "election.none-active");
+            messages.send(sender, "party.none-standing");
             return;
         }
         messages.sendNoPrefix(sender, "party.standing-header", MessageManager.placeholders(

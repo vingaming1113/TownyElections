@@ -82,6 +82,7 @@ party:
   no-such-party: "&cNo current party named &f{old}&c exists in this election."
   max-parties: "&cThis election has reached the maximum number of political parties."
   standing-header: "&7Political parties in &f{town}&7:"
+  none-standing: "&7No political parties have been formed here yet."
   standing-entry: "&7- &f{party} &7({members} members)"
   joined-broadcast: "&e{player}&7 is now campaigning with &f{party}&7 in &f{town}&7."
   rename-usage: "&cUsage: &f/{label} {party} rename <old> <new>"
