@@ -1,7 +1,7 @@
 # TownyElections
 
 [![Build](https://github.com/vingaming1113/TownyElections/actions/workflows/build.yml/badge.svg)](https://github.com/vingaming1113/TownyElections/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/vingaming1113/TownyElections&label=release&logo=github)](https://github.com/vingaming1113/TownyElections/releases)
+[![Latest release](https://img.shields.io/github/v/release/vingaming1113/TownyElections?label=release&logo=github)](https://github.com/vingaming1113/TownyElections/releases)
 [![Downloads](https://img.shields.io/github/downloads/vingaming1113/TownyElections/total?label=downloads&logo=github)](https://github.com/vingaming1113/TownyElections/releases)
 [![Contributors](https://img.shields.io/github/contributors/vingaming1113/TownyElections?label=contributors&logo=github)](https://github.com/vingaming1113/TownyElections/graphs/contributors)
 [![Last commit](https://img.shields.io/github/last-commit/vingaming1113/TownyElections?logo=git)](https://github.com/vingaming1113/TownyElections/commits/main)
