@@ -692,16 +692,12 @@ public class ElectionManager {
         UUID constituencyUuid = c.getUuid();
         Map<String, Set<UUID>> ipMap = ipVoteTracking.computeIfAbsent(constituencyUuid, k -> new HashMap<>());
 
-        for (Set<UUID> voters : ipMap.values()) {
-            voters.remove(voter.getUUID());
-        }
-        ipMap.entrySet().removeIf(entry -> entry.getValue().isEmpty());
-
-        if (election.hasVoted(voter.getUUID())) {
-            // Voter has a ballot, track them
-            Set<UUID> votersForIp = ipMap.computeIfAbsent(ipHash, k -> new HashSet<>());
-            votersForIp.add(voter.getUUID());
-        }
+        // Keep historical fingerprints for the duration of this election. This
+        // prevents clearing a ballot or changing networks from freeing a slot,
+        // while still allowing a voter already associated with any fingerprint
+        // to edit and re-cast their ballot.
+        Set<UUID> votersForIp = ipMap.computeIfAbsent(ipHash, k -> new HashSet<>());
+        votersForIp.add(voter.getUUID());
     }
 
     /**
