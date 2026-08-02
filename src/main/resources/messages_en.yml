@@ -120,6 +120,7 @@ vote:
   usage-ranked: "&cUsage: &f/{label} {vote} <first choice> [second choice] ...&c (rank candidates in order of preference)"
   usage-approval: "&cUsage: &f/{label} {vote} <candidate> [candidate] ...&c (approve every candidate you support)"
   not-eligible: "&cOnly residents of &f{town}&c may vote in this election."
+  ip-limit-reached: "&cThe per-IP voter limit for this election has been reached (&e{limit}&c unique IPs)."
   reminder: "&eVoting in &f{town}&e closes in &f{time}&e and you have not voted yet! Use &f/{label} {vote} <candidate>&e."
 
 

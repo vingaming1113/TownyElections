@@ -42,6 +42,8 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
   click-driven election desk, inspect candidates, and vote from player-head icons.
 - **Voting** — one command to cast (and optionally change) a vote, with eligibility
   restricted to town residents. Supports secret ballots (hidden tallies).
+- **Per-IP vote protection** — optionally limit each active town or nation election
+  to a configured number of distinct IP fingerprints to reduce alt-account abuse.
 - **Three electoral systems** — classic **plurality**, **ranked-choice**
   (instant-runoff with automatic elimination rounds and round-by-round results),
   and **approval voting**, selected with `election.voting-system`. Ballots,
@@ -346,7 +348,19 @@ election:
   auto-schedule:
     enabled: false
     interval: "30d"
+  ip-vote-limit:
+    enabled: false
+    max-votes: 0                 # 0 = unlimited
 ```
+
+When `election.ip-vote-limit.enabled` is true and `max-votes` is greater than zero,
+each active election tracks distinct player IP addresses independently. IPs are
+normalized by the server connection and represented only by an in-memory SHA-256
+fingerprint; raw addresses are never logged or persisted. Ballot changes and
+clearing an existing ballot do not consume additional capacity. Because tracking
+is intentionally not persisted, a server restart resets the fingerprints for
+active elections. Shared networks and proxies may cause multiple players to be
+counted together, while changing IPs can result in separate fingerprints.
 
 See the generated `config.yml` for the full, commented set of options, and
 `messages_en.yml` for every editable message.

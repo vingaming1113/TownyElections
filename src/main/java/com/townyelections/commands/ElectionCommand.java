@@ -387,9 +387,9 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 "town", ctx.constituency().getName(),
                 "name", String.join(" ", rest));
         if (system == VotingSystem.PLURALITY) {
-            result = elections.castVote(ctx.resident(), ctx.constituency(), String.join(" ", rest));
+            result = elections.castVote(ctx.resident(), ctx.constituency(), String.join(" ", rest), ctx.player());
         } else {
-            result = elections.castBallot(ctx.resident(), ctx.constituency(), Arrays.asList(rest));
+            result = elections.castBallot(ctx.resident(), ctx.constituency(), Arrays.asList(rest), ctx.player());
         }
         if (result.getPayload() instanceof String payload) {
             if (result.isSuccess()) {
@@ -403,6 +403,9 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, voteUsageKey(system), MessageManager.placeholders(
                     "label", label, "vote", literal(CommandConfig.VOTE, scope)));
             return;
+        }
+        if ("vote.ip-limit-reached".equals(result.getMessageKey())) {
+            ph.put("limit", String.valueOf(config.getIpVoteLimitMax()));
         }
         respond(sender, result, ph);
     }

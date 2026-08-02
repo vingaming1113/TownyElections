@@ -45,6 +45,8 @@ public class ConfigManager {
     private long autoScheduleIntervalMs;
     private double candidacyCost;
     private double winnerReward;
+    private boolean ipVoteLimitEnabled;
+    private int ipVoteLimitMax;
 
     // nation elections
     private boolean nationElectionsEnabled;
@@ -110,6 +112,8 @@ public class ConfigManager {
         autoScheduleIntervalMs = DurationUtil.parseMillis(c.getString("election.auto-schedule.interval"), days(30));
         candidacyCost = c.getDouble("election.economy.candidacy-cost", 0.0);
         winnerReward = c.getDouble("election.economy.winner-reward", 0.0);
+        ipVoteLimitEnabled = c.getBoolean("election.ip-vote-limit.enabled", false);
+        ipVoteLimitMax = Math.max(0, c.getInt("election.ip-vote-limit.max-votes", 0));
 
         nationElectionsEnabled = c.getBoolean("nation.enabled", true);
         minNationResidents = Math.max(1, c.getInt("nation.min-residents", 3));
@@ -173,6 +177,8 @@ public class ConfigManager {
     public long getAutoScheduleIntervalMs() { return autoScheduleIntervalMs; }
     public double getCandidacyCost() { return candidacyCost; }
     public double getWinnerReward() { return winnerReward; }
+    public boolean isIpVoteLimitEnabled() { return ipVoteLimitEnabled; }
+    public int getIpVoteLimitMax() { return ipVoteLimitMax; }
 
     public boolean isNationElectionsEnabled() { return nationElectionsEnabled; }
     public int getMinNationResidents() { return minNationResidents; }

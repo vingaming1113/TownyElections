@@ -445,13 +445,16 @@ public class ElectionMenu implements Listener {
             handleBallotToggleClick(player, holder, ctx, election, candidateUuid);
             return;
         }
-        OperationResult result = elections.castVote(ctx.resident(), ctx.town(), candidateUuid);
+        OperationResult result = elections.castVote(ctx.resident(), ctx.town(), candidateUuid, player);
         Map<String, String> placeholders = MessageManager.placeholders(
                 "town", ctx.town().getName(),
                 "name", candidateName(ctx.town(), candidateUuid));
         if (result.isSuccess() && result.getPayload() instanceof String candidateName) {
             placeholders.put("candidate", candidateName);
             player.closeInventory();
+        }
+        if ("vote.ip-limit-reached".equals(result.getMessageKey())) {
+            placeholders.put("limit", String.valueOf(config.getIpVoteLimitMax()));
         }
         respond(player, result, placeholders);
         if (!result.isSuccess()) {
@@ -465,7 +468,7 @@ public class ElectionMenu implements Listener {
      */
     private void handleBallotToggleClick(Player player, ElectionMenuHolder holder, PlayerContext ctx,
                                          Election election, UUID candidateUuid) {
-        OperationResult result = elections.toggleBallotEntry(ctx.resident(), ctx.town(), candidateUuid);
+        OperationResult result = elections.toggleBallotEntry(ctx.resident(), ctx.town(), candidateUuid, player);
         Map<String, String> placeholders = MessageManager.placeholders(
                 "town", ctx.town().getName(),
                 "name", candidateName(ctx.town(), candidateUuid));
@@ -475,6 +478,9 @@ public class ElectionMenu implements Listener {
             placeholders.put("rank", String.valueOf(Math.max(1, rank)));
             String ballot = elections.describeBallot(election, ctx.resident().getUUID());
             placeholders.put("ballot", ballot.isEmpty() ? messages.raw("gui.vote-none") : ballot);
+        }
+        if ("vote.ip-limit-reached".equals(result.getMessageKey())) {
+            placeholders.put("limit", String.valueOf(config.getIpVoteLimitMax()));
         }
         respond(player, result, placeholders);
         openRoster(player, holder.getTownUuid(), holder.getPage());
@@ -489,7 +495,7 @@ public class ElectionMenu implements Listener {
         if (ctx == null) {
             return;
         }
-        respond(player, elections.clearBallot(ctx.resident(), ctx.town()),
+        respond(player, elections.clearBallot(ctx.resident(), ctx.town(), player),
                 MessageManager.placeholders("town", ctx.town().getName()));
         openRoster(player, holder.getTownUuid(), holder.getPage());
     }
