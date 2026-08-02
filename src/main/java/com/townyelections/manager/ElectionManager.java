@@ -696,6 +696,11 @@ public class ElectionManager {
         // prevents clearing a ballot or changing networks from freeing a slot,
         // while still allowing a voter already associated with any fingerprint
         // to edit and re-cast their ballot.
+        for (Set<UUID> voters : ipMap.values()) {
+            if (voters.contains(voter.getUUID())) {
+                return;
+            }
+        }
         Set<UUID> votersForIp = ipMap.computeIfAbsent(ipHash, k -> new HashSet<>());
         votersForIp.add(voter.getUUID());
     }
