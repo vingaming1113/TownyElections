@@ -22,6 +22,10 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -59,6 +63,12 @@ public class ElectionManager {
 
     /** constituency uuid -> lowercase party name -> party. Outlives elections. */
     private final Map<UUID, Map<String, StandingParty>> standingParties = new ConcurrentHashMap<>();
+
+    /**
+     * In-memory IP vote tracking: constituency uuid -> IP hash -> set of voter UUIDs.
+     * Not persisted to avoid leaking IP data across restarts. Resets on server restart.
+     */
+    private final Map<UUID, Map<String, Set<UUID>>> ipVoteTracking = new ConcurrentHashMap<>();
 
     private final File dataFile;
 
@@ -398,33 +408,33 @@ public class ElectionManager {
     //  Voting
     // ========================================================================
 
-    public OperationResult castVote(Resident voter, Town town, String candidateName) {
-        return castVote(voter, towny.of(town), candidateName);
+    public OperationResult castVote(Resident voter, Town town, String candidateName, Player player) {
+        return castVote(voter, towny.of(town), candidateName, player);
     }
 
-    public OperationResult castVote(Resident voter, Constituency c, String candidateName) {
+    public OperationResult castVote(Resident voter, Constituency c, String candidateName, Player player) {
         Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
         Candidate candidate = election.findCandidateByName(candidateName);
-        return castVote(voter, c, election, candidate);
+        return castVote(voter, c, election, candidate, player);
     }
 
-    public OperationResult castVote(Resident voter, Town town, UUID candidateUuid) {
-        return castVote(voter, towny.of(town), candidateUuid);
+    public OperationResult castVote(Resident voter, Town town, UUID candidateUuid, Player player) {
+        return castVote(voter, towny.of(town), candidateUuid, player);
     }
 
-    public OperationResult castVote(Resident voter, Constituency c, UUID candidateUuid) {
+    public OperationResult castVote(Resident voter, Constituency c, UUID candidateUuid, Player player) {
         Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
         Candidate candidate = election.getCandidate(candidateUuid);
-        return castVote(voter, c, election, candidate);
+        return castVote(voter, c, election, candidate, player);
     }
 
-    private OperationResult castVote(Resident voter, Constituency c, Election election, Candidate candidate) {
+    private OperationResult castVote(Resident voter, Constituency c, Election election, Candidate candidate, Player player) {
         OperationResult eligibility = checkVoterEligibility(voter, c, election);
         if (eligibility != null) {
             return eligibility;
@@ -441,7 +451,14 @@ public class ElectionManager {
             return OperationResult.fail("vote.already-voted");
         }
 
+        // Check IP vote limit before allowing the vote
+        OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
+        if (ipCheck != null) {
+            return ipCheck;
+        }
+
         election.castVote(voter.getUUID(), candidate.getUuid());
+        trackVoterIp(voter, c, election, player);
         save();
         return OperationResult.ok(alreadyVoted ? "vote.changed" : "vote.cast", candidate.getName());
     }
@@ -451,11 +468,11 @@ public class ElectionManager {
      * vote command under RANKED_CHOICE (names in preference order) and APPROVAL
      * (names form the approved set).
      */
-    public OperationResult castBallot(Resident voter, Town town, List<String> candidateNames) {
-        return castBallot(voter, towny.of(town), candidateNames);
+    public OperationResult castBallot(Resident voter, Town town, List<String> candidateNames, Player player) {
+        return castBallot(voter, towny.of(town), candidateNames, player);
     }
 
-    public OperationResult castBallot(Resident voter, Constituency c, List<String> candidateNames) {
+    public OperationResult castBallot(Resident voter, Constituency c, List<String> candidateNames, Player player) {
         Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
@@ -487,7 +504,14 @@ public class ElectionManager {
             return OperationResult.fail("vote.already-voted");
         }
 
+        // Check IP vote limit before allowing the vote
+        OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
+        if (ipCheck != null) {
+            return ipCheck;
+        }
+
         election.castBallot(voter.getUUID(), ballot);
+        trackVoterIp(voter, c, election, player);
         save();
         return OperationResult.ok(alreadyVoted ? "vote.ballot-changed" : "vote.ballot-cast",
                 describeBallot(election, voter.getUUID()));
@@ -499,11 +523,11 @@ public class ElectionManager {
      * approval). Extending a ballot is always allowed; removing an entry
      * requires vote changes to be enabled.
      */
-    public OperationResult toggleBallotEntry(Resident voter, Town town, UUID candidateUuid) {
-        return toggleBallotEntry(voter, towny.of(town), candidateUuid);
+    public OperationResult toggleBallotEntry(Resident voter, Town town, UUID candidateUuid, Player player) {
+        return toggleBallotEntry(voter, towny.of(town), candidateUuid, player);
     }
 
-    public OperationResult toggleBallotEntry(Resident voter, Constituency c, UUID candidateUuid) {
+    public OperationResult toggleBallotEntry(Resident voter, Constituency c, UUID candidateUuid, Player player) {
         Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
@@ -525,6 +549,7 @@ public class ElectionManager {
             }
             ballot.remove(candidateUuid);
             election.castBallot(voter.getUUID(), ballot);
+            trackVoterIp(voter, c, election, player);
             save();
             return OperationResult.ok(ranked ? "vote.unranked" : "vote.unapproved", candidate.getName());
         }
@@ -532,18 +557,26 @@ public class ElectionManager {
         if (!config.isAllowSelfVote() && candidateUuid.equals(voter.getUUID())) {
             return OperationResult.fail("vote.cannot-self-vote");
         }
+
+        // Check IP vote limit before allowing the vote
+        OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
+        if (ipCheck != null) {
+            return ipCheck;
+        }
+
         ballot.add(candidateUuid);
         election.castBallot(voter.getUUID(), ballot);
+        trackVoterIp(voter, c, election, player);
         save();
         return OperationResult.ok(ranked ? "vote.ranked" : "vote.approved", candidate.getName());
     }
 
     /** Clears the voter's entire ballot (GUI button; requires vote changes). */
-    public OperationResult clearBallot(Resident voter, Town town) {
-        return clearBallot(voter, towny.of(town));
+    public OperationResult clearBallot(Resident voter, Town town, Player player) {
+        return clearBallot(voter, towny.of(town), player);
     }
 
-    public OperationResult clearBallot(Resident voter, Constituency c) {
+    public OperationResult clearBallot(Resident voter, Constituency c, Player player) {
         Election election = active.get(c.getUuid());
         if (election == null) {
             return OperationResult.fail("election.none-active");
@@ -559,6 +592,7 @@ public class ElectionManager {
             return OperationResult.fail("vote.already-voted");
         }
         election.removeBallot(voter.getUUID());
+        trackVoterIp(voter, c, election, player);
         save();
         return OperationResult.ok("vote.ballot-cleared");
     }
@@ -572,6 +606,109 @@ public class ElectionManager {
             return OperationResult.fail("vote.not-eligible");
         }
         return null;
+    }
+
+    /**
+     * Hash a player's IP address using SHA-256. Returns null if the IP cannot be resolved.
+     * This avoids storing raw IP addresses in memory or logs.
+     */
+    private String hashPlayerIp(Player player) {
+        if (player == null) {
+            return null;
+        }
+        InetSocketAddress address = player.getAddress();
+        if (address == null || address.getAddress() == null) {
+            return null;
+        }
+        String ip = address.getAddress().getHostAddress();
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(ip.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) {
+                    hexString.append('0');
+                }
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Check if a voter can cast a ballot given the IP vote limit. Returns null if allowed,
+     * or an OperationResult with the failure message if blocked.
+     */
+    private OperationResult checkIpVoteLimit(Resident voter, Constituency c, Election election, Player player) {
+        if (!config.isIpVoteLimitEnabled() || config.getIpVoteLimitMax() <= 0) {
+            return null;
+        }
+
+        String ipHash = hashPlayerIp(player);
+        if (ipHash == null) {
+            return null;
+        }
+
+        // Existing ballots remain editable after a restart, even though the
+        // in-memory fingerprint registry is intentionally not persisted.
+        if (election.hasVoted(voter.getUUID())) {
+            return null;
+        }
+
+        UUID constituencyUuid = c.getUuid();
+        Map<String, Set<UUID>> ipMap = ipVoteTracking.computeIfAbsent(constituencyUuid, k -> new HashMap<>());
+
+        // Check if this voter is already tracked (has a ballot or is changing)
+        for (Set<UUID> votersForIp : ipMap.values()) {
+            if (votersForIp.contains(voter.getUUID())) {
+                return null;
+            }
+        }
+
+        // Check if we're at the limit
+        if (ipMap.size() >= config.getIpVoteLimitMax()) {
+            return OperationResult.fail("vote.ip-limit-reached");
+        }
+
+        return null;
+    }
+
+    /**
+     * Track a voter's IP after they cast a ballot. Called after successful ballot mutation.
+     */
+    private void trackVoterIp(Resident voter, Constituency c, Election election, Player player) {
+        if (!config.isIpVoteLimitEnabled() || config.getIpVoteLimitMax() <= 0) {
+            return;
+        }
+
+        String ipHash = hashPlayerIp(player);
+        if (ipHash == null) {
+            return;
+        }
+
+        UUID constituencyUuid = c.getUuid();
+        Map<String, Set<UUID>> ipMap = ipVoteTracking.computeIfAbsent(constituencyUuid, k -> new HashMap<>());
+
+        for (Set<UUID> voters : ipMap.values()) {
+            voters.remove(voter.getUUID());
+        }
+        ipMap.entrySet().removeIf(entry -> entry.getValue().isEmpty());
+
+        if (election.hasVoted(voter.getUUID())) {
+            // Voter has a ballot, track them
+            Set<UUID> votersForIp = ipMap.computeIfAbsent(ipHash, k -> new HashSet<>());
+            votersForIp.add(voter.getUUID());
+        }
+    }
+
+    /**
+     * Clean up IP tracking for a constituency when an election concludes or is cancelled.
+     */
+    private void clearIpTracking(UUID constituencyUuid) {
+        ipVoteTracking.remove(constituencyUuid);
     }
 
     /** Human-readable summary of a voter's ballot, e.g. "1. Alice, 2. Bob". */
@@ -658,6 +795,7 @@ public class ElectionManager {
         if (election == null) {
             return OperationResult.fail("election.none-active");
         }
+        clearIpTracking(c.getUuid());
         save();
         broadcast(c, "election.cancelled",
                 MessageManager.placeholders("town", c.getName()));
@@ -677,6 +815,7 @@ public class ElectionManager {
             if (c == null) {
                 // Town/nation no longer exists; drop the election silently.
                 active.remove(election.getTownUuid());
+                clearIpTracking(election.getTownUuid());
                 save();
                 continue;
             }
@@ -699,6 +838,7 @@ public class ElectionManager {
                     // Persist the removal, otherwise the stale election is only
                     // dropped in memory and load() restores it on every restart.
                     if (active.remove(election.getTownUuid()) != null) {
+                        clearIpTracking(election.getTownUuid());
                         save();
                     }
                 }
@@ -723,6 +863,7 @@ public class ElectionManager {
                 return;
             }
             active.remove(c.getUuid());
+            clearIpTracking(c.getUuid());
             save();
             broadcast(c, "election.cancelled-not-enough-candidates",
                     MessageManager.placeholders(
@@ -917,6 +1058,7 @@ public class ElectionManager {
 
         results.put(constituency.getUuid(), result);
         active.remove(constituency.getUuid());
+        clearIpTracking(constituency.getUuid());
         scheduleNextAuto(constituency.getUuid());
         save();
 
