@@ -74,12 +74,6 @@ These images update automatically from GitHub and bStats.
   </a>
 </p>
 
-<p align="center">
-  <a href="https://www.star-history.com/#vingaming1113/TownyElections&Date">
-    <img src="https://api.star-history.com/svg?repos=vingaming1113/TownyElections&type=Date" alt="TownyElections star history chart" />
-  </a>
-</p>
-
 ![bStats](https://bstats.org/signatures/bukkit/TownyElection.svg)
 
 ---
