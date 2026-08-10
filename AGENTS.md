@@ -40,6 +40,8 @@ Before editing code:
 Prefer `rg`/`rg --files` for searching. Use targeted file reads rather than
 loading unrelated code.
 
+Please **DO NOT** bump the version, as i do that myself before a new version releases.
+
 ## Build and verify
 
 Primary local verification:
