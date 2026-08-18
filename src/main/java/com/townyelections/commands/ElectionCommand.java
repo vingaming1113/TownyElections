@@ -1,10 +1,8 @@
 package com.townyelections.commands;
 
-import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
-import com.townyelections.integration.Constituency;
 import com.townyelections.integration.TownyHook;
 import com.townyelections.manager.CommandConfig;
 import com.townyelections.manager.ConfigManager;
@@ -15,7 +13,6 @@ import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
-import com.townyelections.model.ElectionScope;
 import com.townyelections.model.VotingSystem;
 import com.townyelections.util.DurationUtil;
 import org.bukkit.command.Command;
@@ -37,10 +34,6 @@ import java.util.UUID;
  * Single dispatcher for {@code /election <sub-command>}. Sub-command literals
  * are configurable, so we translate the typed literal back to an internal
  * action key before dispatching.
- *
- * <p>Prefixing any sub-command with the {@code nation} literal (e.g.
- * {@code /election nation vote Alice}) targets the player's nation instead of
- * their town; every resident of every town in the nation may take part.
  */
 public class ElectionCommand implements CommandExecutor, TabCompleter {
 
@@ -50,11 +43,6 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     private final CommandConfig commands;
     private final ConfigManager config;
     private final TownyHook towny;
-
-    private static final List<String> PARTY_COLOR_NAMES = List.of(
-            "red", "dark_red", "gold", "yellow", "green", "dark_green", "aqua", "cyan",
-            "blue", "dark_blue", "dark_aqua", "light_purple", "pink", "dark_purple",
-            "white", "gray", "dark_gray", "black");
 
     public ElectionCommand(TownyElections plugin) {
         this.plugin = plugin;
@@ -84,42 +72,21 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        ElectionScope scope = ElectionScope.TOWN;
-        if (action.equals(CommandConfig.NATION)) {
-            if (!config.isNationElectionsEnabled()) {
-                messages.send(sender, "nation.disabled");
-                return true;
-            }
-            scope = ElectionScope.NATION;
-            if (args.length < 2) {
-                sendHelp(sender, label);
-                return true;
-            }
-            args = Arrays.copyOfRange(args, 1, args.length);
-            action = commands.actionFor(args[0]);
-            if (action == null || action.equals(CommandConfig.NATION)) {
-                messages.send(sender, "general.unknown-command", MessageManager.placeholders(
-                        "label", label, "help", commands.literal(CommandConfig.HELP)));
-                return true;
-            }
-        }
-
         String[] rest = Arrays.copyOfRange(args, 1, args.length);
         switch (action) {
             case CommandConfig.HELP -> sendHelp(sender, label);
-            case CommandConfig.RUN -> handleRun(sender, label, scope);
-            case CommandConfig.WITHDRAW -> handleWithdraw(sender, scope);
-            case CommandConfig.CAMPAIGN -> handleCampaign(sender, rest, label, scope);
-            case CommandConfig.PROFILE -> handleProfile(sender, rest, label, scope);
-            case CommandConfig.PARTY -> handleParty(sender, rest, label, scope);
-            case CommandConfig.PARTIES -> handleParties(sender, scope);
-            case CommandConfig.VOTE -> handleVote(sender, rest, label, scope);
-            case CommandConfig.STATUS -> handleStatus(sender, label, scope);
-            case CommandConfig.CANDIDATES -> handleCandidates(sender, label, scope);
-            case CommandConfig.RESULTS -> handleResults(sender, scope);
-            case CommandConfig.START -> handleAdmin(sender, rest, CommandConfig.START, scope);
-            case CommandConfig.STOP -> handleAdmin(sender, rest, CommandConfig.STOP, scope);
-            case CommandConfig.CANCEL -> handleAdmin(sender, rest, CommandConfig.CANCEL, scope);
+            case CommandConfig.RUN -> handleRun(sender);
+            case CommandConfig.WITHDRAW -> handleWithdraw(sender);
+            case CommandConfig.CAMPAIGN -> handleCampaign(sender, rest, label);
+            case CommandConfig.PARTY -> handleParty(sender, rest, label);
+            case CommandConfig.PARTIES -> handleParties(sender);
+            case CommandConfig.VOTE -> handleVote(sender, rest, label);
+            case CommandConfig.STATUS -> handleStatus(sender, label);
+            case CommandConfig.CANDIDATES -> handleCandidates(sender, label);
+            case CommandConfig.RESULTS -> handleResults(sender);
+            case CommandConfig.START -> handleAdmin(sender, rest, CommandConfig.START);
+            case CommandConfig.STOP -> handleAdmin(sender, rest, CommandConfig.STOP);
+            case CommandConfig.CANCEL -> handleAdmin(sender, rest, CommandConfig.CANCEL);
             case CommandConfig.RELOAD -> handleReload(sender);
             default -> sendHelp(sender, label);
         }
@@ -128,8 +95,8 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
     // ---- Player context helper --------------------------------------------
 
-    /** Resolves the sender to (Player, Resident, Constituency). Sends errors and returns null on failure. */
-    private PlayerContext resolveContext(CommandSender sender, ElectionScope scope) {
+    /** Resolves the sender to (Player, Resident, Town). Sends errors and returns null on failure. */
+    private PlayerContext resolveContext(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             messages.send(sender, "general.players-only");
             return null;
@@ -139,225 +106,130 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, "general.not-a-resident");
             return null;
         }
-        if (scope == ElectionScope.NATION) {
-            Nation nation = towny.getPlayerNation(player);
-            if (nation == null) {
-                messages.send(sender, "general.no-nation");
-                return null;
-            }
-            return new PlayerContext(player, resident, towny.of(nation));
-        }
         Town town = towny.getPlayerTown(player);
         if (town == null) {
             messages.send(sender, "general.no-town");
             return null;
         }
-        return new PlayerContext(player, resident, towny.of(town));
+        return new PlayerContext(player, resident, town);
     }
 
-    private record PlayerContext(Player player, Resident resident, Constituency constituency) {
-    }
-
-    private Election electionOf(PlayerContext ctx) {
-        return elections.getElection(ctx.constituency().getUuid());
-    }
-
-    /** The command literal for an action, prefixed with the nation token when needed. */
-    private String literal(String action, ElectionScope scope) {
-        String lit = commands.literal(action);
-        return scope == ElectionScope.NATION ? commands.literal(CommandConfig.NATION) + " " + lit : lit;
+    private record PlayerContext(Player player, Resident resident, Town town) {
     }
 
     // ---- Candidacy ---------------------------------------------------------
 
-    private void handleRun(CommandSender sender, String label, ElectionScope scope) {
+    private void handleRun(CommandSender sender) {
         if (!sender.hasPermission("townyelections.candidate")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        OperationResult result = elections.registerCandidate(ctx.resident(), ctx.constituency());
-        respond(sender, result, MessageManager.placeholders(
-                "town", ctx.constituency().getName(),
-                "max", String.valueOf(config.getMaxCandidates())));
-        if (result.isSuccess()) {
-            sendCandidacyTips(sender, label, scope);
-        }
+        respond(sender, elections.registerCandidate(ctx.resident(), ctx.town()),
+                MessageManager.placeholders(
+                        "town", ctx.town().getName(),
+                        "max", String.valueOf(config.getMaxCandidates())));
     }
 
-    /** Nudge a freshly-registered candidate toward setting up their campaign. */
-    private void sendCandidacyTips(CommandSender sender, String label, ElectionScope scope) {
-        Map<String, String> tips = MessageManager.placeholders(
-                "label", label,
-                "campaign", literal(CommandConfig.CAMPAIGN, scope),
-                "party", literal(CommandConfig.PARTY, scope),
-                "profile", literal(CommandConfig.PROFILE, scope));
-        messages.sendNoPrefix(sender, "candidate.recommend-header", null);
-        messages.sendNoPrefix(sender, "candidate.recommend-campaign", tips);
-        messages.sendNoPrefix(sender, "candidate.recommend-party", tips);
-        messages.sendNoPrefix(sender, "candidate.recommend-color", tips);
-        messages.sendNoPrefix(sender, "candidate.recommend-profile", tips);
-    }
-
-    private void handleWithdraw(CommandSender sender, ElectionScope scope) {
+    private void handleWithdraw(CommandSender sender) {
         if (!sender.hasPermission("townyelections.candidate")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        respond(sender, elections.withdrawCandidate(ctx.resident(), ctx.constituency()),
-                MessageManager.placeholders("town", ctx.constituency().getName()));
+        respond(sender, elections.withdrawCandidate(ctx.resident(), ctx.town()),
+                MessageManager.placeholders("town", ctx.town().getName()));
     }
 
-    private void handleCampaign(CommandSender sender, String[] rest, String label, ElectionScope scope) {
+    private void handleCampaign(CommandSender sender, String[] rest, String label) {
         if (!sender.hasPermission("townyelections.candidate")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
         if (rest.length == 0) {
             messages.send(sender, "campaign.empty", MessageManager.placeholders(
-                    "label", label, "campaign", literal(CommandConfig.CAMPAIGN, scope)));
+                    "label", label, "campaign", commands.literal(CommandConfig.CAMPAIGN)));
             return;
         }
         String message = String.join(" ", rest);
-        respond(sender, elections.setCampaignMessage(ctx.resident(), ctx.constituency(), message),
+        respond(sender, elections.setCampaignMessage(ctx.resident(), ctx.town(), message),
                 MessageManager.placeholders("max", String.valueOf(config.getMaxMessageLength())));
     }
 
-    private void handleProfile(CommandSender sender, String[] rest, String label, ElectionScope scope) {
-        if (!sender.hasPermission("townyelections.candidate")) {
-            messages.send(sender, "general.no-permission");
-            return;
-        }
-        PlayerContext ctx = resolveContext(sender, scope);
-        if (ctx == null) {
-            return;
-        }
-        Election election = electionOf(ctx);
-        Candidate candidate = election == null ? null : election.getCandidate(ctx.resident().getUUID());
-        if (candidate == null) {
-            messages.send(sender, "candidate.not-a-candidate");
-            return;
-        }
-        if (rest.length == 0) {
-            messages.sendNoPrefix(sender, "profile.header",
-                    MessageManager.placeholders("candidate", candidate.getName()));
-            messages.sendNoPrefix(sender, "profile.body", MessageManager.placeholders(
-                    "profile", displayProfile(candidate)));
-            messages.sendNoPrefix(sender, "profile.usage", MessageManager.placeholders(
-                    "label", label,
-                    "profile", literal(CommandConfig.PROFILE, scope)));
-            return;
-        }
-        String profile = String.join(" ", rest);
-        respond(sender, elections.setCandidateProfile(ctx.resident(), ctx.constituency(), profile),
-                MessageManager.placeholders("max", String.valueOf(config.getMaxProfileLength())));
-    }
-
-    private void handleParty(CommandSender sender, String[] rest, String label, ElectionScope scope) {
+    private void handleParty(CommandSender sender, String[] rest, String label) {
         if (rest.length > 0 && rest[0].equalsIgnoreCase("rename")) {
             if (!sender.hasPermission("townyelections.admin")) {
                 messages.send(sender, "general.no-permission");
                 return;
             }
-            PlayerContext ctx = resolveContext(sender, scope);
+            PlayerContext ctx = resolveContext(sender);
             if (ctx == null) {
                 return;
             }
-            handlePartyRename(sender, ctx, rest, label, scope);
+            handlePartyRename(sender, ctx, rest, label);
             return;
         }
         if (!sender.hasPermission("townyelections.candidate")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
         if (rest.length == 0) {
-            Election election = electionOf(ctx);
+            Election election = elections.getElection(ctx.town());
             Candidate candidate = election == null ? null : election.getCandidate(ctx.resident().getUUID());
             if (candidate == null) {
-                String standing = elections.standingPartyOf(
-                        ctx.constituency().getUuid(), ctx.resident().getUUID());
-                if (standing == null) {
-                    messages.send(sender, "candidate.not-a-candidate");
-                } else {
-                    messages.send(sender, "party.current", MessageManager.placeholders(
-                            "party", standing,
-                            "label", label,
-                            "party_command", literal(CommandConfig.PARTY, scope)));
-                }
+                messages.send(sender, "candidate.not-a-candidate");
                 return;
             }
             messages.send(sender, "party.current", MessageManager.placeholders(
-                    "party", elections.partyDisplay(election, candidate.getPartyName()),
+                    "party", candidate.getPartyName(),
                     "label", label,
-                    "party_command", literal(CommandConfig.PARTY, scope)));
-            return;
-        }
-        if (rest.length >= 1 && rest[0].equalsIgnoreCase("color")) {
-            if (rest.length < 2) {
-                messages.send(sender, "party.color-usage", MessageManager.placeholders(
-                        "label", label, "party", literal(CommandConfig.PARTY, scope)));
-                return;
-            }
-            OperationResult colorResult = elections.setPartyColor(ctx.resident(), ctx.constituency(), rest[1]);
-            Map<String, String> colorPh = MessageManager.placeholders("color", rest[1]);
-            if (colorResult.isSuccess() && colorResult.getPayload() instanceof String display) {
-                colorPh.put("party", display);
-            }
-            respond(sender, colorResult, colorPh);
+                    "party_command", commands.literal(CommandConfig.PARTY)));
             return;
         }
         if (rest.length == 1 && rest[0].equalsIgnoreCase("leave")) {
-            respond(sender, elections.leaveParty(ctx.resident(), ctx.constituency()),
+            respond(sender, elections.leaveParty(ctx.resident(), ctx.town()),
                     MessageManager.placeholders("party", config.getDefaultPartyName()));
             return;
         }
         String partyName = String.join(" ", rest);
-        OperationResult partyResult = elections.setPartyName(ctx.resident(), ctx.constituency(), partyName);
-        Map<String, String> partyPh = MessageManager.placeholders(
-                "party", partyName.trim(),
-                "max", String.valueOf(config.getMaxPartyNameLength()));
-        if (partyResult.isSuccess()) {
-            Election election = electionOf(ctx);
-            partyPh.put("party", election == null ? partyName.trim()
-                    : elections.partyDisplay(election, partyName.trim()));
-        }
-        respond(sender, partyResult, partyPh);
+        respond(sender, elections.setPartyName(ctx.resident(), ctx.town(), partyName),
+                MessageManager.placeholders(
+                        "party", partyName.trim(),
+                        "max", String.valueOf(config.getMaxPartyNameLength())));
     }
 
-    private void handlePartyRename(CommandSender sender, PlayerContext ctx, String[] rest, String label,
-                                   ElectionScope scope) {
+    private void handlePartyRename(CommandSender sender, PlayerContext ctx, String[] rest, String label) {
         if (!sender.hasPermission("townyelections.admin")) {
             messages.send(sender, "general.no-permission");
             return;
         }
         if (rest.length < 3) {
             messages.send(sender, "party.rename-usage", MessageManager.placeholders(
-                    "label", label, "party", literal(CommandConfig.PARTY, scope)));
+                    "label", label, "party", commands.literal(CommandConfig.PARTY)));
             return;
         }
         String oldName = rest[1];
         String newName = String.join(" ", Arrays.copyOfRange(rest, 2, rest.length));
         if (oldName.isBlank() || newName.isBlank()) {
             messages.send(sender, "party.rename-usage", MessageManager.placeholders(
-                    "label", label, "party", literal(CommandConfig.PARTY, scope)));
+                    "label", label, "party", commands.literal(CommandConfig.PARTY)));
             return;
         }
-        respond(sender, elections.renameParty(ctx.constituency(), oldName, newName), MessageManager.placeholders(
+        respond(sender, elections.renameParty(ctx.town(), oldName, newName), MessageManager.placeholders(
                 "old", oldName,
                 "new", newName.trim(),
                 "max", String.valueOf(config.getMaxPartyNameLength())));
@@ -365,31 +237,31 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
     // ---- Voting ------------------------------------------------------------
 
-    private void handleVote(CommandSender sender, String[] rest, String label, ElectionScope scope) {
+    private void handleVote(CommandSender sender, String[] rest, String label) {
         if (!sender.hasPermission("townyelections.vote")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        Election election = electionOf(ctx);
+        Election election = elections.getElection(ctx.town());
         VotingSystem system = election == null ? config.getVotingSystem() : election.getVotingSystem();
         if (rest.length == 0) {
             messages.send(sender, voteUsageKey(system), MessageManager.placeholders(
-                    "label", label, "vote", literal(CommandConfig.VOTE, scope)));
+                    "label", label, "vote", commands.literal(CommandConfig.VOTE)));
             return;
         }
 
         OperationResult result;
         Map<String, String> ph = MessageManager.placeholders(
-                "town", ctx.constituency().getName(),
+                "town", ctx.town().getName(),
                 "name", String.join(" ", rest));
         if (system == VotingSystem.PLURALITY) {
-            result = elections.castVote(ctx.resident(), ctx.constituency(), String.join(" ", rest), ctx.player());
+            result = elections.castVote(ctx.resident(), ctx.town(), String.join(" ", rest), ctx.player());
         } else {
-            result = elections.castBallot(ctx.resident(), ctx.constituency(), Arrays.asList(rest), ctx.player());
+            result = elections.castBallot(ctx.resident(), ctx.town(), Arrays.asList(rest), ctx.player());
         }
         if (result.getPayload() instanceof String payload) {
             if (result.isSuccess()) {
@@ -401,11 +273,8 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         }
         if (!result.isSuccess() && "vote.usage".equals(result.getMessageKey())) {
             messages.send(sender, voteUsageKey(system), MessageManager.placeholders(
-                    "label", label, "vote", literal(CommandConfig.VOTE, scope)));
+                    "label", label, "vote", commands.literal(CommandConfig.VOTE)));
             return;
-        }
-        if ("vote.ip-limit-reached".equals(result.getMessageKey())) {
-            ph.put("limit", String.valueOf(config.getIpVoteLimitMax()));
         }
         respond(sender, result, ph);
     }
@@ -420,23 +289,23 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
     // ---- Info --------------------------------------------------------------
 
-    private void handleStatus(CommandSender sender, String label, ElectionScope scope) {
+    private void handleStatus(CommandSender sender, String label) {
         if (!sender.hasPermission("townyelections.info")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        Election election = electionOf(ctx);
+        Election election = elections.getElection(ctx.town());
         if (election == null) {
             messages.send(sender, "election.none-active");
             return;
         }
 
         messages.sendNoPrefix(sender, "status.header",
-                MessageManager.placeholders("town", ctx.constituency().getName()));
+                MessageManager.placeholders("town", ctx.town().getName()));
 
         String phaseLabel = switch (election.getPhase()) {
             case NOMINATION -> messages.raw("election.phase-nomination");
@@ -467,35 +336,35 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.sendNoPrefix(sender, "status.your-vote",
                     MessageManager.placeholders(
                             "choice", c == null ? "?" : c.getName(),
-                            "party", c == null ? "?" : elections.partyDisplay(election, c.getPartyName())));
+                            "party", c == null ? "?" : c.getPartyName()));
         } else {
             messages.sendNoPrefix(sender, "status.your-ballot", MessageManager.placeholders(
                     "ballot", elections.describeBallot(election, ctx.resident().getUUID())));
         }
 
-        printCandidateList(sender, election, label, scope);
+        printCandidateList(sender, election, label);
     }
 
-    private void handleCandidates(CommandSender sender, String label, ElectionScope scope) {
+    private void handleCandidates(CommandSender sender, String label) {
         if (!sender.hasPermission("townyelections.info")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        Election election = electionOf(ctx);
+        Election election = elections.getElection(ctx.town());
         if (election == null) {
             messages.send(sender, "election.none-active");
             return;
         }
-        printCandidateList(sender, election, label, scope);
+        printCandidateList(sender, election, label);
     }
 
-    private void printCandidateList(CommandSender sender, Election election, String label, ElectionScope scope) {
+    private void printCandidateList(CommandSender sender, Election election, String label) {
         messages.sendNoPrefix(sender, "status.candidate-list-header",
-                MessageManager.placeholders("label", label, "vote", literal(CommandConfig.VOTE, scope)));
+                MessageManager.placeholders("label", label, "vote", commands.literal(CommandConfig.VOTE)));
 
         boolean showVotes = config.isPublicLiveResults()
                 || election.getPhase() == ElectionPhase.CONCLUDED;
@@ -504,59 +373,33 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             if (showVotes) {
                 messages.sendNoPrefix(sender, "status.candidate-entry", MessageManager.placeholders(
                         "candidate", c.getName(),
-                        "party", elections.partyDisplay(election, c.getPartyName()),
+                        "party", c.getPartyName(),
                         "votes", String.valueOf(tally.getOrDefault(c.getUuid(), 0)),
-                        "message", c.getCampaignMessage(),
-                        "profile", displayProfile(c)));
+                        "message", c.getCampaignMessage()));
             } else {
                 messages.sendNoPrefix(sender, "status.candidate-entry-hidden", MessageManager.placeholders(
                         "candidate", c.getName(),
-                        "party", elections.partyDisplay(election, c.getPartyName()),
-                        "message", c.getCampaignMessage(),
-                        "profile", displayProfile(c)));
+                        "party", c.getPartyName(),
+                        "message", c.getCampaignMessage()));
             }
         }
     }
 
-    private void handleParties(CommandSender sender, ElectionScope scope) {
+    private void handleParties(CommandSender sender) {
         if (!sender.hasPermission("townyelections.info")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        Election election = electionOf(ctx);
+        Election election = elections.getElection(ctx.town());
         if (election == null) {
-            printStandingPartyList(sender, ctx);
+            messages.send(sender, "election.none-active");
             return;
         }
-        printPartyList(sender, election, ctx.constituency().getName());
-    }
-
-    private void printStandingPartyList(CommandSender sender, PlayerContext ctx) {
-        var parties = elections.getStandingParties(ctx.constituency());
-        String defaultParty = config.getDefaultPartyName();
-        boolean hideDefault = config.isHideDefaultPartyFromStandings();
-        List<ElectionManager.StandingParty> visible = new ArrayList<>();
-        for (ElectionManager.StandingParty p : parties) {
-            if (hideDefault && p.name.equalsIgnoreCase(defaultParty)) {
-                continue;
-            }
-            visible.add(p);
-        }
-        if (visible.isEmpty()) {
-            messages.send(sender, "party.standing-none", MessageManager.placeholders(
-                    "town", ctx.constituency().getName()));
-            return;
-        }
-        messages.sendNoPrefix(sender, "party.standing-header", MessageManager.placeholders(
-                "town", ctx.constituency().getName()));
-        for (ElectionManager.StandingParty p : visible) {
-            messages.sendNoPrefix(sender, "party.standing-entry", MessageManager.placeholders(
-                    "party", p.name, "members", String.valueOf(p.members.size())));
-        }
+        printPartyList(sender, election, ctx.town().getName());
     }
 
     private void printPartyList(CommandSender sender, Election election, String townName) {
@@ -588,7 +431,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         for (String party : rankedParties(partyCandidates, partyVotes, showVotes)) {
             List<String> candidates = partyCandidates.get(party);
             Map<String, String> placeholders = MessageManager.placeholders(
-                    "party", elections.partyDisplay(election, party),
+                    "party", party,
                     "count", String.valueOf(candidates.size()),
                     "candidates", String.join(", ", candidates),
                     "votes", String.valueOf(partyVotes.getOrDefault(party, 0)));
@@ -622,7 +465,6 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     private void printResultPartyList(CommandSender sender, ElectionResult result) {
         Map<String, List<String>> partyCandidates = new LinkedHashMap<>();
         Map<String, Integer> partyVotes = new LinkedHashMap<>();
-        Map<String, String> partyColorCodes = new LinkedHashMap<>();
 
         for (ElectionResult.Standing standing : result.getStandings()) {
             String party = standing.partyName == null || standing.partyName.isBlank()
@@ -633,7 +475,6 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             }
             partyCandidates.computeIfAbsent(party, ignored -> new ArrayList<>()).add(standing.name);
             partyVotes.merge(party, standing.votes, Integer::sum);
-            partyColorCodes.putIfAbsent(party, standing.partyColor);
         }
 
         messages.sendNoPrefix(sender, "parties.result-header",
@@ -644,19 +485,12 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         }
         for (String party : rankedParties(partyCandidates, partyVotes, true)) {
             List<String> candidates = partyCandidates.get(party);
-            String color = partyColorCodes.getOrDefault(party, "");
             messages.sendNoPrefix(sender, "parties.entry", MessageManager.placeholders(
-                    "party", (color == null ? "" : color) + party,
+                    "party", party,
                     "count", String.valueOf(candidates.size()),
                     "candidates", String.join(", ", candidates),
                     "votes", String.valueOf(partyVotes.getOrDefault(party, 0))));
         }
-    }
-
-    /** A result standing's party name prefixed with its recorded colour code. */
-    private String standingParty(ElectionResult.Standing standing) {
-        String color = standing.partyColor == null ? "" : standing.partyColor;
-        return color + standing.partyName;
     }
 
     private List<String> rankedParties(Map<String, List<String>> partyCandidates,
@@ -686,16 +520,16 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         return names;
     }
 
-    private void handleResults(CommandSender sender, ElectionScope scope) {
+    private void handleResults(CommandSender sender) {
         if (!sender.hasPermission("townyelections.info")) {
             messages.send(sender, "general.no-permission");
             return;
         }
-        PlayerContext ctx = resolveContext(sender, scope);
+        PlayerContext ctx = resolveContext(sender);
         if (ctx == null) {
             return;
         }
-        ElectionResult result = elections.getLastResult(ctx.constituency().getUuid());
+        ElectionResult result = elections.getLastResult(ctx.town().getUUID());
         if (result == null) {
             messages.send(sender, "results.none-recorded");
             return;
@@ -713,7 +547,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
             messages.sendNoPrefix(sender, "results.line", MessageManager.placeholders(
                     "rank", String.valueOf(rank++),
                     "candidate", standing.name,
-                    "party", standingParty(standing),
+                    "party", standing.partyName,
                     "votes", String.valueOf(standing.votes),
                     "percent", String.valueOf(percent)));
         }
@@ -724,7 +558,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         if (result.hasWinner()) {
             String winnerParty = result.getStandings().stream()
                     .filter(standing -> standing.uuid.equals(result.getWinnerUuid()))
-                    .map(this::standingParty)
+                    .map(standing -> standing.partyName)
                     .findFirst()
                     .orElse(config.getDefaultPartyName());
             messages.sendNoPrefix(sender, "results.winner", MessageManager.placeholders(
@@ -746,72 +580,41 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
 
     // ---- Admin -------------------------------------------------------------
 
-    private void handleAdmin(CommandSender sender, String[] rest, String action, ElectionScope scope) {
+    private void handleAdmin(CommandSender sender, String[] rest, String action) {
         if (!sender.hasPermission("townyelections.admin")) {
             messages.send(sender, "general.no-permission");
             return;
         }
 
-        Constituency target = resolveAdminTarget(sender, rest, scope);
-        if (target == null) {
-            return;
-        }
-
-        OperationResult result = switch (action) {
-            case CommandConfig.START -> elections.startElection(target);
-            case CommandConfig.STOP -> elections.stopElection(target);
-            case CommandConfig.CANCEL -> elections.cancelElection(target);
-            default -> OperationResult.fail("general.unknown-command");
-        };
-        int min = scope == ElectionScope.NATION ? config.getMinNationResidents() : config.getMinTownResidents();
-        respond(sender, result, MessageManager.placeholders(
-                "town", target.getName(),
-                "min", String.valueOf(min)));
-    }
-
-    /** Resolve the town/nation an admin command targets, or null (with an error sent). */
-    private Constituency resolveAdminTarget(CommandSender sender, String[] rest, ElectionScope scope) {
-        if (scope == ElectionScope.NATION) {
-            if (rest.length > 0) {
-                Nation nation = towny.getNationByName(rest[0]);
-                if (nation == null) {
-                    messages.send(sender, "admin.nation-not-found",
-                            MessageManager.placeholders("nation", rest[0]));
-                    return null;
-                }
-                return towny.of(nation);
-            }
-            if (!(sender instanceof Player player)) {
-                messages.send(sender, "admin.nation-not-found", MessageManager.placeholders("nation", "?"));
-                return null;
-            }
-            Nation nation = towny.getPlayerNation(player);
-            if (nation == null) {
-                messages.send(sender, "general.no-nation");
-                return null;
-            }
-            return towny.of(nation);
-        }
-
+        Town town;
         if (rest.length > 0) {
-            Town town = towny.getTownByName(rest[0]);
+            town = towny.getTownByName(rest[0]);
             if (town == null) {
                 messages.send(sender, "admin.town-not-found",
                         MessageManager.placeholders("town", rest[0]));
-                return null;
+                return;
             }
-            return towny.of(town);
+        } else {
+            if (!(sender instanceof Player player)) {
+                messages.send(sender, "admin.town-not-found", MessageManager.placeholders("town", "?"));
+                return;
+            }
+            town = towny.getPlayerTown(player);
+            if (town == null) {
+                messages.send(sender, "general.no-town");
+                return;
+            }
         }
-        if (!(sender instanceof Player player)) {
-            messages.send(sender, "admin.town-not-found", MessageManager.placeholders("town", "?"));
-            return null;
-        }
-        Town town = towny.getPlayerTown(player);
-        if (town == null) {
-            messages.send(sender, "general.no-town");
-            return null;
-        }
-        return towny.of(town);
+
+        OperationResult result = switch (action) {
+            case CommandConfig.START -> elections.startElection(town);
+            case CommandConfig.STOP -> elections.stopElection(town);
+            case CommandConfig.CANCEL -> elections.cancelElection(town);
+            default -> OperationResult.fail("general.unknown-command");
+        };
+        respond(sender, result, MessageManager.placeholders(
+                "town", town.getName(),
+                "min", String.valueOf(config.getMinTownResidents())));
     }
 
     private void handleReload(CommandSender sender) {
@@ -845,8 +648,7 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 "start", commands.literal(CommandConfig.START),
                 "stop", commands.literal(CommandConfig.STOP),
                 "cancel", commands.literal(CommandConfig.CANCEL),
-                "reload", commands.literal(CommandConfig.RELOAD),
-                "nation", commands.literal(CommandConfig.NATION));
+                "reload", commands.literal(CommandConfig.RELOAD));
 
         messages.sendNoPrefix(sender, "help.header", null);
         messages.sendNoPrefix(sender, "help.run", base);
@@ -854,15 +656,11 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.sendNoPrefix(sender, "help.campaign", base);
         messages.sendNoPrefix(sender, "help.profile", base);
         messages.sendNoPrefix(sender, "help.party", base);
-        messages.sendNoPrefix(sender, "help.party-color", base);
         messages.sendNoPrefix(sender, "help.parties", base);
         messages.sendNoPrefix(sender, "help.vote", base);
         messages.sendNoPrefix(sender, "help.status", base);
         messages.sendNoPrefix(sender, "help.candidates", base);
         messages.sendNoPrefix(sender, "help.results", base);
-        if (config.isNationElectionsEnabled()) {
-            messages.sendNoPrefix(sender, "help.nation", base);
-        }
         if (sender.hasPermission("townyelections.admin")) {
             messages.sendNoPrefix(sender, "help.start", base);
             messages.sendNoPrefix(sender, "help.stop", base);
@@ -876,20 +674,20 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                        @NotNull String alias, @NotNull String[] args) {
-        // Strip a leading nation prefix so the remaining completion mirrors town scope.
-        ElectionScope scope = ElectionScope.TOWN;
-        if (args.length >= 1 && CommandConfig.NATION.equals(commands.actionFor(args[0]))
-                && config.isNationElectionsEnabled()) {
-            if (args.length == 1) {
-                return topLevelCompletions(sender, args[0].toLowerCase());
-            }
-            scope = ElectionScope.NATION;
-            args = Arrays.copyOfRange(args, 1, args.length);
-        }
-
         List<String> out = new ArrayList<>();
         if (args.length == 1) {
-            return topLevelCompletions(sender, args[0].toLowerCase());
+            String partial = args[0].toLowerCase();
+            for (String actionKey : commands.getActions()) {
+                // Hide admin sub-commands from users without permission.
+                if (isAdminAction(actionKey) && !sender.hasPermission("townyelections.admin")) {
+                    continue;
+                }
+                String literal = commands.literal(actionKey);
+                if (literal.toLowerCase().startsWith(partial)) {
+                    out.add(literal);
+                }
+            }
+            return out;
         }
 
         if (args.length >= 2) {
@@ -898,9 +696,12 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 return out;
             }
             String partial = args[args.length - 1].toLowerCase();
-            // Suggest candidate names for voting.
+            // Suggest candidate names for voting. Ranked-choice and approval
+            // ballots list several names, so complete every argument position
+            // and skip names already on the command line.
             if (CommandConfig.VOTE.equals(action) && sender instanceof Player player) {
-                Election election = playerElection(player, scope);
+                Town town = towny.getPlayerTown(player);
+                Election election = elections.getElection(town);
                 if (election != null
                         && (args.length == 2 || election.getVotingSystem() != VotingSystem.PLURALITY)) {
                     List<String> alreadyTyped = Arrays.asList(args).subList(1, args.length - 1);
@@ -912,24 +713,10 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                     }
                 }
             }
-            // Suggest party sub-actions, colours, and existing party names.
+            // Suggest existing party names when choosing an affiliation.
             if (CommandConfig.PARTY.equals(action) && sender instanceof Player player) {
-                if (args.length >= 2 && args[1].equalsIgnoreCase("color")) {
-                    for (String color : PARTY_COLOR_NAMES) {
-                        if (color.startsWith(partial)) {
-                            out.add(color);
-                        }
-                    }
-                    return out;
-                }
-                if (args.length == 2) {
-                    for (String sub : List.of("color", "leave")) {
-                        if (sub.startsWith(partial)) {
-                            out.add(sub);
-                        }
-                    }
-                }
-                Election election = playerElection(player, scope);
+                Town town = towny.getPlayerTown(player);
+                Election election = elections.getElection(town);
                 if (election != null) {
                     String partyInput = String.join(" ", Arrays.copyOfRange(args, 1, args.length)).toLowerCase();
                     for (String party : currentPartyNames(election)) {
@@ -939,55 +726,16 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                     }
                 }
             }
-            // Suggest town/nation names for admin commands.
+            // Suggest town names for admin commands.
             if (args.length == 2 && isAdminAction(action) && sender.hasPermission("townyelections.admin")) {
-                if (scope == ElectionScope.NATION) {
-                    for (Nation nation : towny.getNations()) {
-                        if (nation.getName().toLowerCase().startsWith(partial)) {
-                            out.add(nation.getName());
-                        }
-                    }
-                } else {
-                    for (Town town : com.palmergames.bukkit.towny.TownyUniverse.getInstance().getTowns()) {
-                        if (town.getName().toLowerCase().startsWith(partial)) {
-                            out.add(town.getName());
-                        }
+                for (Town town : com.palmergames.bukkit.towny.TownyUniverse.getInstance().getTowns()) {
+                    if (town.getName().toLowerCase().startsWith(partial)) {
+                        out.add(town.getName());
                     }
                 }
             }
         }
         return out;
-    }
-
-    private List<String> topLevelCompletions(CommandSender sender, String partial) {
-        List<String> out = new ArrayList<>();
-        for (String actionKey : commands.getActions()) {
-            if (CommandConfig.NATION.equals(actionKey) && !config.isNationElectionsEnabled()) {
-                continue;
-            }
-            if (isAdminAction(actionKey) && !sender.hasPermission("townyelections.admin")) {
-                continue;
-            }
-            String lit = commands.literal(actionKey);
-            if (lit.toLowerCase().startsWith(partial)) {
-                out.add(lit);
-            }
-        }
-        return out;
-    }
-
-    private Election playerElection(Player player, ElectionScope scope) {
-        if (scope == ElectionScope.NATION) {
-            Nation nation = towny.getPlayerNation(player);
-            return nation == null ? null : elections.getElection(nation.getUUID());
-        }
-        Town town = towny.getPlayerTown(player);
-        return town == null ? null : elections.getElection(town);
-    }
-
-    private String displayProfile(Candidate candidate) {
-        String profile = candidate.getProfile();
-        return profile == null || profile.isBlank() ? messages.raw("profile.none") : profile;
     }
 
     private boolean isAdminAction(String action) {
