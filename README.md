@@ -40,6 +40,9 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
   party-level vote totals alongside individual winners.
 - **Inventory GUI** — players can run `/election` with no arguments to open a
   click-driven election desk, inspect candidates, and vote from player-head icons.
+  Menus use single-chest (27-slot) inventories for reliable rendering and hit
+  detection in Geyser's Pocket Edition UI mode; Java clients retain normal chest
+  inventory behavior.
 - **Voting** — one command to cast (and optionally change) a vote, with eligibility
   restricted to town residents. Supports secret ballots (hidden tallies).
 - **Per-IP vote protection** — optionally limit each active town or nation election
@@ -194,6 +197,11 @@ checks, self-vote setting, vote-change setting, campaign limits, and party limit
 as the chat commands. Menu clicks and drags are cancelled inside plugin
 inventories so players cannot take, place, shift-click, or drag GUI items into
 their own inventory.
+
+The compact single-chest layout is intentional for Bedrock/Geyser compatibility.
+Geyser may display titles and item lore slightly differently from Java Edition,
+but all actions remain ordinary inventory clicks and do not require double-chest
+layouts, custom forms, or drag gestures.
 
 ### Political parties
 

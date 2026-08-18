@@ -44,18 +44,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class ElectionMenu implements Listener {
 
-    private static final int MAIN_SIZE = 54;
-    private static final int PAGE_SIZE = 54;
-    private static final int BACK_SLOT = 45;
-    private static final int PREVIOUS_SLOT = 48;
-    private static final int CLEAR_BALLOT_SLOT = 49;
-    private static final int NEXT_SLOT = 50;
+    // Keep every view to a single chest. Double-chest menus are translated by
+    // Geyser into a wide Pocket UI and have unreliable lower-row hit testing.
+    private static final int MAIN_SIZE = 27;
+    private static final int PAGE_SIZE = 27;
+    private static final int BACK_SLOT = 18;
+    private static final int PREVIOUS_SLOT = 21;
+    private static final int CLEAR_BALLOT_SLOT = 22;
+    private static final int NEXT_SLOT = 23;
     private static final int STATUS_SLOT = 4;
     private static final List<Integer> CONTENT_SLOTS = List.of(
-            10, 11, 12, 13, 14, 15, 16,
-            19, 20, 21, 22, 23, 24, 25,
-            28, 29, 30, 31, 32, 33, 34,
-            37, 38, 39, 40, 41, 42, 43);
+            0, 1, 2, 3, 5, 6,
+            7, 8, 9, 10, 11, 12,
+            13, 14, 15, 16, 17);
 
     private final TownyElections plugin;
     private final ElectionManager elections;
@@ -89,31 +90,31 @@ public class ElectionMenu implements Listener {
         fillFrame(inventory);
 
         inventory.setItem(STATUS_SLOT, statusItem(ctx.town(), election, ctx.resident()));
-        addAction(inventory, holder, 10, ElectionMenuAction.CANDIDATES, Material.PLAYER_HEAD,
+        addAction(inventory, holder, 0, ElectionMenuAction.CANDIDATES, Material.PLAYER_HEAD,
                 "gui.main-candidates-name", "gui.main-candidates-lore", menuPlaceholders);
-        addAction(inventory, holder, 12, ElectionMenuAction.STANDINGS, Material.OAK_SIGN,
+        addAction(inventory, holder, 2, ElectionMenuAction.STANDINGS, Material.OAK_SIGN,
                 "gui.main-standings-name", "gui.main-standings-lore", menuPlaceholders);
-        addAction(inventory, holder, 14, ElectionMenuAction.RESULTS, Material.WRITABLE_BOOK,
+        addAction(inventory, holder, 6, ElectionMenuAction.RESULTS, Material.WRITABLE_BOOK,
                 "gui.main-results-name", "gui.main-results-lore", menuPlaceholders);
-        addAction(inventory, holder, 16, ElectionMenuAction.RUN, Material.NAME_TAG,
+        addAction(inventory, holder, 8, ElectionMenuAction.RUN, Material.NAME_TAG,
                 "gui.main-run-name", "gui.main-run-lore", menuPlaceholders);
-        addAction(inventory, holder, 20, ElectionMenuAction.WITHDRAW, Material.RED_BED,
+        addAction(inventory, holder, 10, ElectionMenuAction.WITHDRAW, Material.RED_BED,
                 "gui.main-withdraw-name", "gui.main-withdraw-lore", menuPlaceholders);
-        addAction(inventory, holder, 22, ElectionMenuAction.SET_CAMPAIGN, Material.PAPER,
+        addAction(inventory, holder, 12, ElectionMenuAction.SET_CAMPAIGN, Material.PAPER,
                 "gui.main-campaign-name", "gui.main-campaign-lore", menuPlaceholders);
-        addAction(inventory, holder, 24, ElectionMenuAction.SET_PARTY, Material.BLUE_BANNER,
+        addAction(inventory, holder, 14, ElectionMenuAction.SET_PARTY, Material.BLUE_BANNER,
                 "gui.main-party-name", "gui.main-party-lore", menuPlaceholders);
-        addAction(inventory, holder, 32, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
+        addAction(inventory, holder, 16, ElectionMenuAction.LEAVE_PARTY, Material.WHITE_BANNER,
                 "gui.main-leave-party-name", "gui.main-leave-party-lore", menuPlaceholders);
 
         if (player.hasPermission("townyelections.admin")) {
-            addAction(inventory, holder, 37, ElectionMenuAction.ADMIN_START, Material.EMERALD_BLOCK,
+            addAction(inventory, holder, 1, ElectionMenuAction.ADMIN_START, Material.EMERALD_BLOCK,
                     "gui.admin-start-name", "gui.admin-start-lore", menuPlaceholders);
-            addAction(inventory, holder, 39, ElectionMenuAction.ADMIN_STOP, Material.REDSTONE_BLOCK,
+            addAction(inventory, holder, 3, ElectionMenuAction.ADMIN_STOP, Material.REDSTONE_BLOCK,
                     "gui.admin-stop-name", "gui.admin-stop-lore", menuPlaceholders);
-            addAction(inventory, holder, 41, ElectionMenuAction.ADMIN_CANCEL, Material.BARRIER,
+            addAction(inventory, holder, 5, ElectionMenuAction.ADMIN_CANCEL, Material.BARRIER,
                     "gui.admin-cancel-name", "gui.admin-cancel-lore", menuPlaceholders);
-            addAction(inventory, holder, 43, ElectionMenuAction.ADMIN_RELOAD, Material.COMPARATOR,
+            addAction(inventory, holder, 7, ElectionMenuAction.ADMIN_RELOAD, Material.COMPARATOR,
                     "gui.admin-reload-name", "gui.admin-reload-lore", menuPlaceholders);
         }
 
@@ -150,7 +151,7 @@ public class ElectionMenu implements Listener {
         addBackButton(inventory, holder, menuPlaceholders);
 
         if (candidates.isEmpty()) {
-            inventory.setItem(22, icon(Material.BARRIER,
+            inventory.setItem(4, icon(Material.BARRIER,
                     "gui.no-candidates-name", "gui.no-candidates-lore", menuPlaceholders));
         } else {
             Map<UUID, Integer> tally = election.tally();
@@ -210,7 +211,7 @@ public class ElectionMenu implements Listener {
         addBackButton(inventory, holder, menuPlaceholders);
 
         if (parties.isEmpty()) {
-            inventory.setItem(22, icon(Material.BARRIER,
+            inventory.setItem(4, icon(Material.BARRIER,
                     "gui.no-parties-name", "gui.no-parties-lore", menuPlaceholders));
         } else {
             int start = page * CONTENT_SLOTS.size();
