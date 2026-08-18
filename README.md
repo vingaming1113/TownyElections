@@ -395,9 +395,9 @@ release is found it is logged to the console, and players with
 
 Configure it under `update-checker` in `config.yml`:
 
-- `update-checker.enabled` — turn the Modrinth check on or off.
-- `update-checker.modrinth-project` — the project slug or id from your Modrinth
-  URL (`modrinth.com/plugin/<slug>`); set this to match your download page.
+- `update-checker.enabled` — turn the GitHub Releases check on or off.
+- `update-checker.github-repository` — GitHub repository in `owner/name` form
+  (default: `vingaming1113/TownyElections`). Draft, prerelease, and nightly releases are ignored.
 - `update-checker.notify-admins-on-join` — message admins on join when an update
   is available.
 

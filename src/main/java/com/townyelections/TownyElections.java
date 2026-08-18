@@ -94,7 +94,7 @@ public class TownyElections extends JavaPlugin {
         hookPlaceholderAPI();
         setupMetrics();
 
-        // Update checker (Modrinth). Runs asynchronously; never blocks startup.
+        // Update checker (GitHub Releases). Runs asynchronously; never blocks startup.
         updateChecker = new UpdateChecker(this);
         if (configManager.isUpdateCheckerEnabled()) {
             updateChecker.checkAsync();
