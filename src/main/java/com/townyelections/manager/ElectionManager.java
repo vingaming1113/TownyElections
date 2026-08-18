@@ -64,10 +64,7 @@ public class ElectionManager {
     /** constituency uuid -> lowercase party name -> party. Outlives elections. */
     private final Map<UUID, Map<String, StandingParty>> standingParties = new ConcurrentHashMap<>();
 
-    /**
-     * In-memory IP vote tracking: constituency uuid -> IP hash -> set of voter UUIDs.
-     * Not persisted to avoid leaking IP data across restarts. Resets on server restart.
-     */
+    /** Constituency UUID -> hashed IP -> voter UUIDs that have held a ballot. */
     private final Map<UUID, Map<String, Set<UUID>>> ipVoteTracking = new ConcurrentHashMap<>();
 
     private final File dataFile;
@@ -446,15 +443,16 @@ public class ElectionManager {
             return OperationResult.fail("vote.cannot-self-vote");
         }
 
-        boolean alreadyVoted = election.hasVoted(voter.getUUID());
-        if (alreadyVoted && !config.isAllowVoteChanges()) {
-            return OperationResult.fail("vote.already-voted");
-        }
-
-        // Check IP vote limit before allowing the vote
+        // Check the fingerprint before the already-voted check: a second account
+        // must not inherit the original account's ability to change a ballot.
         OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
         if (ipCheck != null) {
             return ipCheck;
+        }
+
+        boolean alreadyVoted = election.hasVoted(voter.getUUID());
+        if (alreadyVoted && !config.isAllowVoteChanges()) {
+            return OperationResult.fail("vote.already-voted");
         }
 
         election.castVote(voter.getUUID(), candidate.getUuid());
@@ -499,15 +497,16 @@ public class ElectionManager {
             return OperationResult.fail("vote.usage");
         }
 
-        boolean alreadyVoted = election.hasVoted(voter.getUUID());
-        if (alreadyVoted && !config.isAllowVoteChanges()) {
-            return OperationResult.fail("vote.already-voted");
-        }
-
-        // Check IP vote limit before allowing the vote
+        // Check the fingerprint before the already-voted check for the same reason
+        // as the single-choice path above.
         OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
         if (ipCheck != null) {
             return ipCheck;
+        }
+
+        boolean alreadyVoted = election.hasVoted(voter.getUUID());
+        if (alreadyVoted && !config.isAllowVoteChanges()) {
+            return OperationResult.fail("vote.already-voted");
         }
 
         election.castBallot(voter.getUUID(), ballot);
@@ -541,6 +540,11 @@ public class ElectionManager {
             return OperationResult.fail("vote.no-such-candidate");
         }
 
+        OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
+        if (ipCheck != null) {
+            return ipCheck;
+        }
+
         boolean ranked = election.getVotingSystem() == VotingSystem.RANKED_CHOICE;
         List<UUID> ballot = new ArrayList<>(election.getBallot(voter.getUUID()));
         if (ballot.contains(candidateUuid)) {
@@ -556,12 +560,6 @@ public class ElectionManager {
 
         if (!config.isAllowSelfVote() && candidateUuid.equals(voter.getUUID())) {
             return OperationResult.fail("vote.cannot-self-vote");
-        }
-
-        // Check IP vote limit before allowing the vote
-        OperationResult ipCheck = checkIpVoteLimit(voter, c, election, player);
-        if (ipCheck != null) {
-            return ipCheck;
         }
 
         ballot.add(candidateUuid);
@@ -652,20 +650,20 @@ public class ElectionManager {
             return null;
         }
 
-        // Existing ballots remain editable after a restart, even though the
-        // in-memory fingerprint registry is intentionally not persisted.
-        if (election.hasVoted(voter.getUUID())) {
-            return null;
-        }
-
         UUID constituencyUuid = c.getUuid();
         Map<String, Set<UUID>> ipMap = ipVoteTracking.computeIfAbsent(constituencyUuid, k -> new HashMap<>());
 
-        // Check if this voter is already tracked (has a ballot or is changing)
+        // A known voter may change/clear their ballot, including after reconnecting
+        // with a different address. A different UUID may never share a fingerprint.
         for (Set<UUID> votersForIp : ipMap.values()) {
             if (votersForIp.contains(voter.getUUID())) {
                 return null;
             }
+        }
+
+        Set<UUID> votersForIp = ipMap.get(ipHash);
+        if (votersForIp != null && !votersForIp.isEmpty()) {
+            return OperationResult.fail("vote.ip-limit-reached");
         }
 
         // Check if we're at the limit
@@ -692,15 +690,14 @@ public class ElectionManager {
         UUID constituencyUuid = c.getUuid();
         Map<String, Set<UUID>> ipMap = ipVoteTracking.computeIfAbsent(constituencyUuid, k -> new HashMap<>());
 
-        // Keep historical fingerprints for the duration of this election. This
-        // prevents clearing a ballot or changing networks from freeing a slot,
-        // while still allowing a voter already associated with any fingerprint
-        // to edit and re-cast their ballot.
+        // Preserve ownership when reconnecting from a different address. A voter
+        // who already held a ballot may still change or clear it.
         for (Set<UUID> voters : ipMap.values()) {
             if (voters.contains(voter.getUUID())) {
                 return;
             }
         }
+
         Set<UUID> votersForIp = ipMap.computeIfAbsent(ipHash, k -> new HashSet<>());
         votersForIp.add(voter.getUUID());
     }
@@ -1409,6 +1406,15 @@ public class ElectionManager {
             scheduleSection.set(entry.getKey().toString(), entry.getValue());
         }
 
+        ConfigurationSection ipSection = yaml.createSection("ip-vote-tracking");
+        for (Map.Entry<UUID, Map<String, Set<UUID>>> entry : ipVoteTracking.entrySet()) {
+            ConfigurationSection constituencySection = ipSection.createSection(entry.getKey().toString());
+            for (Map.Entry<String, Set<UUID>> fingerprint : entry.getValue().entrySet()) {
+                constituencySection.set(fingerprint.getKey(),
+                        fingerprint.getValue().stream().map(UUID::toString).toList());
+            }
+        }
+
         try {
             if (!plugin.getDataFolder().exists()) {
                 plugin.getDataFolder().mkdirs();
@@ -1424,6 +1430,7 @@ public class ElectionManager {
         results.clear();
         nextAutoStart.clear();
         standingParties.clear();
+        ipVoteTracking.clear();
         if (!dataFile.exists()) {
             return;
         }
@@ -1489,6 +1496,39 @@ public class ElectionManager {
                     nextAutoStart.put(UUID.fromString(key), scheduleSection.getLong(key));
                 } catch (IllegalArgumentException ignored) {
                     // skip malformed
+                }
+            }
+        }
+
+        ConfigurationSection ipSection = yaml.getConfigurationSection("ip-vote-tracking");
+        if (ipSection != null) {
+            for (String cKey : ipSection.getKeys(false)) {
+                UUID constituency;
+                try {
+                    constituency = UUID.fromString(cKey);
+                } catch (IllegalArgumentException ignored) {
+                    continue;
+                }
+                ConfigurationSection constituencySection = ipSection.getConfigurationSection(cKey);
+                if (constituencySection == null) {
+                    continue;
+                }
+                Map<String, Set<UUID>> fingerprints = new HashMap<>();
+                for (String fingerprint : constituencySection.getKeys(false)) {
+                    Set<UUID> voters = new HashSet<>();
+                    for (String voter : constituencySection.getStringList(fingerprint)) {
+                        try {
+                            voters.add(UUID.fromString(voter));
+                        } catch (IllegalArgumentException ignored) {
+                            // Skip malformed legacy entries.
+                        }
+                    }
+                    if (!voters.isEmpty()) {
+                        fingerprints.put(fingerprint, voters);
+                    }
+                }
+                if (!fingerprints.isEmpty()) {
+                    ipVoteTracking.put(constituency, fingerprints);
                 }
             }
         }

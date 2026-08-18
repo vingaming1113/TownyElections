@@ -112,17 +112,15 @@ election:
     # Reward paid to the winner from nowhere (0 = disabled).
     winner-reward: 0.0
 
-  # Per-IP vote limit to prevent alt abuse. When enabled, limits the number of
-  # distinct IP addresses that can cast ballots in a single active election.
-  # IP addresses are hashed (SHA-256) and tracked in memory only; they are not
-  # persisted to disk. After a server restart, the tracking resets.
+  # Per-IP vote limit to prevent alt abuse. When enabled, one account per
+  # fingerprint can obtain a ballot, up to the configured number of fingerprints.
+  # IP addresses are hashed (SHA-256); only the hashes and voter UUIDs are saved
+  # so the protection remains effective after a server restart.
   ip-vote-limit:
     # Master switch for the per-IP vote limit. false = disabled (current behavior).
     enabled: false
-    # Maximum number of distinct IP addresses allowed to vote in one active election.
+    # Maximum number of distinct IP fingerprints allowed to vote in one election.
     # 0 = unlimited (effectively disabled even if enabled: true).
-    # Each unique IP can have multiple voters, but only up to this many unique IPs
-    # can participate in a single election.
     max-votes: 0
 
 # ----------------------------------------------------------------------------
