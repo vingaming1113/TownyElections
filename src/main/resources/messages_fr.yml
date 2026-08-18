@@ -88,7 +88,7 @@ party:
   joined-broadcast: "&e{player}&7 fait maintenant campagne avec &f{party}&7 dans &f{town}&7."
   rename-usage: "&cUtilisation : &f/{label} {party} rename <old> <new>"
   too-long: "&cLe nom de votre parti est trop long (maximum &e{max}&c caractères)."
-  empty: "&cUtilisation : &f/{label} {party} <existing party or new name>"
+  empty: "&cUtilisation : &f/{label} {party} <parti existant ou nouveau nom>"
   color-set: "&aLa couleur de votre parti a été définie. Aperçu : &r{party}&a."
   color-invalid: "&cCouleur invalide &f{color}&c. Utilisez un nom (ex. red), un code (ex. &c) ou un hexadécimal (&#RRGGBB)."
   color-needs-party: "&cRejoignez ou créez d'abord un parti, puis définissez sa couleur."
