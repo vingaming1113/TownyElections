@@ -21,9 +21,6 @@ public class Election {
     private final UUID townUuid;
     private String townName;
 
-    /** Whether this election belongs to a town or a whole nation. */
-    private ElectionScope scope = ElectionScope.TOWN;
-
     private ElectionPhase phase;
     private long phaseEndsAt;
     private VotingSystem votingSystem = VotingSystem.PLURALITY;
@@ -63,14 +60,6 @@ public class Election {
 
     public void setTownName(String townName) {
         this.townName = townName;
-    }
-
-    public ElectionScope getScope() {
-        return scope;
-    }
-
-    public void setScope(ElectionScope scope) {
-        this.scope = scope == null ? ElectionScope.TOWN : scope;
     }
 
     public ElectionPhase getPhase() {
@@ -313,7 +302,6 @@ public class Election {
     public void serialize(ConfigurationSection section) {
         section.set("town-uuid", townUuid.toString());
         section.set("town-name", townName);
-        section.set("scope", scope.name());
         section.set("phase", phase.name());
         section.set("phase-ends-at", phaseEndsAt);
         section.set("voting-system", votingSystem.name());
@@ -354,6 +342,10 @@ public class Election {
             return null;
         }
         String townName = section.getString("town-name", "Unknown");
+        // Nation elections were removed; discard legacy persisted entries.
+        if ("NATION".equalsIgnoreCase(section.getString("scope", "TOWN"))) {
+            return null;
+        }
         ElectionPhase phase;
         try {
             phase = ElectionPhase.valueOf(section.getString("phase", "NOMINATION"));
@@ -363,7 +355,6 @@ public class Election {
         long phaseEndsAt = section.getLong("phase-ends-at", System.currentTimeMillis());
 
         Election election = new Election(townUuid, townName, phase, phaseEndsAt);
-        election.scope = ElectionScope.fromString(section.getString("scope"), ElectionScope.TOWN);
         election.votingSystem = VotingSystem.fromString(
                 section.getString("voting-system"), VotingSystem.PLURALITY);
         election.reminderSent = section.getBoolean("reminder-sent", false);
