@@ -48,14 +48,8 @@ public class ConfigManager {
     private boolean ipVoteLimitEnabled;
     private int ipVoteLimitMax;
 
-    // nation elections
-    private boolean nationElectionsEnabled;
-    private int minNationResidents;
-    private boolean nationAutoSchedule;
-
     // campaign
     private int maxMessageLength;
-    private int maxProfileLength;
     private String defaultCampaignMessage;
     private int maxPartyNameLength;
     private String defaultPartyName;
@@ -66,9 +60,7 @@ public class ConfigManager {
 
     // winner
     private boolean setAsMayor;
-    private boolean setAsKing;
     private List<String> grantTownRanks;
-    private List<String> grantNationRanks;
     private boolean revokePreviousWinnerRanks;
     private List<String> commandsOnWin;
     private List<String> commandsOnLoss;
@@ -115,12 +107,7 @@ public class ConfigManager {
         ipVoteLimitEnabled = c.getBoolean("election.ip-vote-limit.enabled", false);
         ipVoteLimitMax = Math.max(0, c.getInt("election.ip-vote-limit.max-votes", 0));
 
-        nationElectionsEnabled = c.getBoolean("nation.enabled", true);
-        minNationResidents = Math.max(1, c.getInt("nation.min-residents", 3));
-        nationAutoSchedule = c.getBoolean("nation.auto-schedule", false);
-
         maxMessageLength = Math.max(1, c.getInt("campaign.max-message-length", 128));
-        maxProfileLength = Math.max(1, c.getInt("campaign.max-profile-length", 256));
         defaultCampaignMessage = c.getString("campaign.default-message", "I would be honored to serve this town.");
         maxPartyNameLength = Math.max(1, c.getInt("campaign.max-party-name-length", 32));
         defaultPartyName = c.getString("campaign.default-party-name", "Independent");
@@ -130,9 +117,7 @@ public class ConfigManager {
         blockedWords = c.getStringList("campaign.blocked-words");
 
         setAsMayor = c.getBoolean("winner.set-as-mayor", false);
-        setAsKing = c.getBoolean("winner.set-as-king", false);
         grantTownRanks = c.getStringList("winner.grant-town-ranks");
-        grantNationRanks = c.getStringList("winner.grant-nation-ranks");
         revokePreviousWinnerRanks = c.getBoolean("winner.revoke-previous-winner-ranks", true);
         commandsOnWin = c.getStringList("winner.commands-on-win");
         commandsOnLoss = c.getStringList("winner.commands-on-loss");
@@ -180,12 +165,7 @@ public class ConfigManager {
     public boolean isIpVoteLimitEnabled() { return ipVoteLimitEnabled; }
     public int getIpVoteLimitMax() { return ipVoteLimitMax; }
 
-    public boolean isNationElectionsEnabled() { return nationElectionsEnabled; }
-    public int getMinNationResidents() { return minNationResidents; }
-    public boolean isNationAutoSchedule() { return nationAutoSchedule; }
-
     public int getMaxMessageLength() { return maxMessageLength; }
-    public int getMaxProfileLength() { return maxProfileLength; }
     public String getDefaultCampaignMessage() { return defaultCampaignMessage; }
     public int getMaxPartyNameLength() { return maxPartyNameLength; }
     public String getDefaultPartyName() { return defaultPartyName; }
@@ -195,9 +175,7 @@ public class ConfigManager {
     public List<String> getBlockedWords() { return blockedWords; }
 
     public boolean isSetAsMayor() { return setAsMayor; }
-    public boolean isSetAsKing() { return setAsKing; }
     public List<String> getGrantTownRanks() { return grantTownRanks; }
-    public List<String> getGrantNationRanks() { return grantNationRanks; }
     public boolean isRevokePreviousWinnerRanks() { return revokePreviousWinnerRanks; }
     public List<String> getCommandsOnWin() { return commandsOnWin; }
     public List<String> getCommandsOnLoss() { return commandsOnLoss; }
