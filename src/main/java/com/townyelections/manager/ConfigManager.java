@@ -24,7 +24,7 @@ public class ConfigManager {
 
     // update checker
     private boolean updateCheckerEnabled;
-    private String updateProject;
+    private String updateRepository;
     private boolean updateNotifyAdminsOnJoin;
 
     // election
@@ -84,7 +84,7 @@ public class ConfigManager {
         metrics = c.getBoolean("general.metrics", true);
 
         updateCheckerEnabled = c.getBoolean("update-checker.enabled", true);
-        updateProject = c.getString("update-checker.modrinth-project", "elections");
+        updateRepository = c.getString("update-checker.github-repository", "vingaming1113/TownyElections");
         updateNotifyAdminsOnJoin = c.getBoolean("update-checker.notify-admins-on-join", true);
 
         nominationDurationMs = DurationUtil.parseMillis(c.getString("election.nomination-duration"), days(2));
@@ -142,7 +142,7 @@ public class ConfigManager {
     public boolean isMetrics() { return metrics; }
 
     public boolean isUpdateCheckerEnabled() { return updateCheckerEnabled; }
-    public String getUpdateProject() { return updateProject; }
+    public String getUpdateRepository() { return updateRepository; }
     public boolean isUpdateNotifyAdminsOnJoin() { return updateNotifyAdminsOnJoin; }
 
     public long getNominationDurationMs() { return nominationDurationMs; }

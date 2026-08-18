@@ -58,8 +58,9 @@ Towny town ranks (plot management, etc.) and/or mayorship you configure.
 - **Auto-scheduling** — optionally run recurring elections in every eligible town.
 - **Persistence** — active elections and results survive restarts (`data.yml`).
 - **Integrations** — optional **PlaceholderAPI** placeholders and **bStats** metrics.
-- **Update notifications** — asynchronously checks Modrinth for a newer *release*
-  (beta/alpha ignored), logs to console, and can notify admins on join.
+- **Update notifications** — asynchronously checks GitHub Releases for a newer
+  stable release (draft/prerelease/nightly ignored), logs to console, and can
+  notify admins on join.
 - **Localised, colourised messages** — legacy `&` and hex `&#RRGGBB` colours.
 
 ---
@@ -387,17 +388,17 @@ resolves against the player's **nation** election instead of their town election
 
 ## Update notifications
 
-On startup TownyElections asynchronously checks Modrinth for a newer **release**
-version of the plugin. Beta and alpha releases are ignored, the check never
-blocks the server, and it never downloads or installs anything. When a newer
-release is found it is logged to the console, and players with
+On startup TownyElections asynchronously checks GitHub Releases for a newer
+**stable** version of the plugin using each release's `tag_name`. Draft,
+prerelease, and nightly releases are ignored, the check never blocks the server,
+and it never downloads or installs anything. When a newer release is found it is logged to the console, and players with
 `townyelections.admin` can be notified when they join.
 
 Configure it under `update-checker` in `config.yml`:
 
-- `update-checker.enabled` — turn the Modrinth check on or off.
-- `update-checker.modrinth-project` — the project slug or id from your Modrinth
-  URL (`modrinth.com/plugin/<slug>`); set this to match your download page.
+- `update-checker.enabled` — turn the GitHub Releases check on or off.
+- `update-checker.github-repository` — GitHub repository in `owner/name` form
+  (default: `vingaming1113/TownyElections`). Draft, prerelease, and nightly releases are ignored.
 - `update-checker.notify-admins-on-join` — message admins on join when an update
   is available.
 
