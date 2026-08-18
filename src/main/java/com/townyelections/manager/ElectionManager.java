@@ -10,7 +10,6 @@ import com.townyelections.model.Candidate;
 import com.townyelections.model.Election;
 import com.townyelections.model.ElectionPhase;
 import com.townyelections.model.ElectionResult;
-import com.townyelections.model.ElectionScope;
 import com.townyelections.model.InstantRunoff;
 import com.townyelections.model.TieBreaker;
 import com.townyelections.model.VotingSystem;
@@ -186,40 +185,6 @@ public class ElectionManager {
         candidate.setCampaignMessage(message);
         save();
         return OperationResult.ok("campaign.set");
-    }
-
-    /** Set the resident's candidate profile. Returns the outcome. */
-    public OperationResult setCandidateProfile(Resident resident, Town town, String profile) {
-        return setCandidateProfile(resident, towny.of(town), profile);
-    }
-
-    public OperationResult setCandidateProfile(Resident resident, Constituency c, String profile) {
-        Election election = active.get(c.getUuid());
-        if (election == null) {
-            return OperationResult.fail("election.none-active");
-        }
-        Candidate candidate = election.getCandidate(resident.getUUID());
-        if (candidate == null) {
-            return OperationResult.fail("candidate.not-a-candidate");
-        }
-        if (editsLocked(election)) {
-            return OperationResult.fail("candidate.edits-locked");
-        }
-        if (profile == null || profile.isBlank()) {
-            return OperationResult.fail("profile.empty");
-        }
-        if (profile.length() > config.getMaxProfileLength()) {
-            return OperationResult.fail("profile.too-long");
-        }
-        String lower = profile.toLowerCase(Locale.ROOT);
-        for (String blocked : config.getBlockedWords()) {
-            if (!blocked.isBlank() && lower.contains(blocked.toLowerCase(Locale.ROOT))) {
-                return OperationResult.fail("profile.blocked");
-            }
-        }
-        candidate.setProfile(profile);
-        save();
-        return OperationResult.ok("profile.set");
     }
 
     public OperationResult leaveParty(Resident resident, Town town) {
@@ -732,19 +697,16 @@ public class ElectionManager {
         return startElection(towny.of(town));
     }
 
-    /** Start a new election for any constituency (town or nation). */
+    /** Start a new election for a town. */
     public OperationResult startElection(Constituency c) {
         if (active.containsKey(c.getUuid())) {
             return OperationResult.fail("election.already-active");
         }
-        int minResidents = c.scope() == ElectionScope.NATION
-                ? config.getMinNationResidents() : config.getMinTownResidents();
-        if (c.getResidentCount() < minResidents) {
+        if (c.getResidentCount() < config.getMinTownResidents()) {
             return OperationResult.fail("election.town-too-small");
         }
         long endsAt = System.currentTimeMillis() + config.getNominationDurationMs();
         Election election = new Election(c.getUuid(), c.getName(), ElectionPhase.NOMINATION, endsAt);
-        election.setScope(c.scope());
         election.setVotingSystem(config.getVotingSystem());
         active.put(c.getUuid(), election);
         save();
@@ -844,9 +806,8 @@ public class ElectionManager {
         }
 
         // Auto-scheduling of new elections.
-        boolean nationAuto = config.isNationElectionsEnabled() && config.isNationAutoSchedule();
-        if (config.isAutoScheduleEnabled() || nationAuto) {
-            maybeAutoSchedule(now, nationAuto);
+        if (config.isAutoScheduleEnabled()) {
+            maybeAutoSchedule(now);
         }
     }
 
@@ -1128,9 +1089,8 @@ public class ElectionManager {
 
     /** Grant the winner their configured Towny ranks / leadership and run commands. */
     private void applyWinnerRewards(Constituency constituency, Candidate winner, int winnerVotes, int totalVotes) {
-        boolean nation = constituency.scope() == ElectionScope.NATION;
-        List<String> ranks = nation ? config.getGrantNationRanks() : config.getGrantTownRanks();
-        boolean setLeader = nation ? config.isSetAsKing() : config.isSetAsMayor();
+        List<String> ranks = config.getGrantTownRanks();
+        boolean setLeader = config.isSetAsMayor();
 
         Resident winnerResident = towny.getResident(winner.getUuid());
         if (winnerResident == null) {
@@ -1153,7 +1113,7 @@ public class ElectionManager {
 
             if (setLeader) {
                 if (constituency.setLeader(winnerResident)) {
-                    broadcast(constituency, nation ? "winner.made-king" : "winner.made-mayor",
+                    broadcast(constituency, "winner.made-mayor",
                             MessageManager.placeholders(
                                     "winner", winner.getName(), "town", constituency.getName()));
                 }
@@ -1196,15 +1156,10 @@ public class ElectionManager {
     //  Auto-scheduling
     // ========================================================================
 
-    private void maybeAutoSchedule(long now, boolean nationAuto) {
+    private void maybeAutoSchedule(long now) {
         if (config.isAutoScheduleEnabled()) {
             for (Town town : com.palmergames.bukkit.towny.TownyUniverse.getInstance().getTowns()) {
                 maybeAutoScheduleConstituency(towny.of(town), config.getMinTownResidents(), now);
-            }
-        }
-        if (nationAuto) {
-            for (Nation nation : towny.getNations()) {
-                maybeAutoScheduleConstituency(towny.of(nation), config.getMinNationResidents(), now);
             }
         }
     }
@@ -1232,8 +1187,7 @@ public class ElectionManager {
     }
 
     private void scheduleNextAuto(UUID uuid) {
-        if (config.isAutoScheduleEnabled()
-                || (config.isNationElectionsEnabled() && config.isNationAutoSchedule())) {
+        if (config.isAutoScheduleEnabled()) {
             nextAutoStart.put(uuid, System.currentTimeMillis() + config.getAutoScheduleIntervalMs());
         }
     }
@@ -1257,15 +1211,9 @@ public class ElectionManager {
         }
     }
 
-    /**
-     * The command literal for an action, prefixed with the nation sub-command
-     * when the election is a nation election (e.g. {@code nation vote}).
-     */
+    /** The configured command literal for an action. */
     private String subLiteral(Election election, String action) {
         String literal = commands.literal(action);
-        if (election.getScope() == ElectionScope.NATION) {
-            return commands.literal(CommandConfig.NATION) + " " + literal;
-        }
         return literal;
     }
 

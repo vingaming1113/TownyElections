@@ -4,7 +4,6 @@ import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.palmergames.bukkit.towny.permissions.TownyPerms;
 import com.townyelections.TownyElections;
-import com.townyelections.model.ElectionScope;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,11 +22,6 @@ public class TownConstituency implements Constituency {
 
     public Town getTown() {
         return town;
-    }
-
-    @Override
-    public ElectionScope scope() {
-        return ElectionScope.TOWN;
     }
 
     @Override
