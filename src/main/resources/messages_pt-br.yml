@@ -1,0 +1,335 @@
+# TownyElections - arquivo de mensagens (locale: pt-br)
+# Suporta códigos de cor legados '&' e hexadecimais '&#RRGGBB'.
+# Os placeholders disponíveis variam conforme a mensagem; os mais comuns aparecem abaixo.
+
+prefix: "&8[&bEleições&8]&r "
+
+general:
+  no-permission: "&cVocê não tem permissão para fazer isso."
+  players-only: "&cEste comando só pode ser usado por jogadores."
+  not-a-resident: "&cVocê não é um residente Towny registrado."
+  no-town: "&cVocê precisa pertencer a uma cidade para fazer isso."
+  no-nation: "&cVocê precisa pertencer a uma nação para fazer isso."
+  reloaded: "&aConfiguração recarregada com sucesso."
+  unknown-command: "&cSubcomando desconhecido. Use &f/{label} {help}&c."
+  invalid-number: "&cEsse não é um número válido."
+
+election:
+  none-active: "&cNão há uma eleição ativa na sua cidade."
+  already-active: "&cJá existe uma eleição ativa em &f{town}&c."
+  started-nomination: "&aUma eleição começou em &f{town}&a! As candidaturas estão abertas por &e{duration}&a. Use &f/{label} {run}&a para se candidatar."
+  announce-server-start: "&6&lEleição!&e Uma eleição começou em &f{town}&e."
+  nominations-closed-voting-open: "&aAs candidaturas foram encerradas. A votação (&f{system}&a) está aberta por &e{duration}&a em &f{town}&a. Use &f/{label} {vote} <candidate>&a."
+  cancelled: "&cA eleição em &f{town}&c foi cancelada. Nenhum vencedor foi declarado."
+  cancelled-not-enough-candidates: "&cA eleição em &f{town}&c foi cancelada: apenas &e{count}&c candidato(s) se registraram (mínimo &e{min}&c)."
+  concluded: "&aA eleição em &f{town}&a foi concluída!"
+  town-too-small: "&cEsta cidade precisa de pelo menos &e{min}&c residentes para realizar uma eleição."
+  time-remaining-nomination: "&7As candidaturas terminam em &f{time}&7."
+  time-remaining-voting: "&7A votação termina em &f{time}&7."
+  phase-nomination: "&eCANDIDATURAS"
+  phase-voting: "&aVOTAÇÃO"
+  phase-runoff: "&6SEGUNDO TURNO"
+  system-plurality: "&fMaioria simples"
+  system-ranked-choice: "&fVoto preferencial"
+  system-approval: "&fVoto de aprovação"
+
+nation:
+  disabled: "&cAs eleições nacionais estão desativadas neste servidor."
+
+update:
+  available: "&fUma nova versão está disponível: &av{latest}&f (você tem &7v{current}&f). Baixe em: &b{url}"
+
+candidate:
+  registered: "&aVocê agora é candidato na eleição de &f{town}&a. Boa sorte!"
+  already-registered: "&cVocê já é candidato nesta eleição."
+  withdrawn: "&eVocê desistiu da eleição de &f{town}&e."
+  not-a-candidate: "&cVocê não é candidato na eleição atual."
+  registration-closed: "&cO registro de candidatos está encerrado; a fase de candidaturas terminou."
+  max-reached: "&cO número máximo de candidatos (&e{max}&c) foi atingido."
+  cost-charged: "&7Uma taxa de candidatura de &f{cost}&7 foi cobrada."
+  cannot-afford: "&cVocê não pode pagar a taxa de candidatura de &f{cost}&c."
+  self-registered-broadcast: "&e{player}&7 entrou na disputa por &f{town}&7!"
+  edits-locked: "&cVocê não pode alterar os detalhes da campanha depois do início da votação."
+  recommend-header: "&7Próximos passos para construir sua campanha:"
+  recommend-campaign: "&8 • &fDefina uma mensagem de campanha: &7/{label} {campaign} <message>"
+  recommend-party: "&8 • &fEntre ou crie um partido: &7/{label} {party} <name>"
+  recommend-color: "&8 • &fEscolha a cor do partido: &7/{label} {party} color <colour>"
+  recommend-profile: "&8 • &fEscreva um perfil de candidato: &7/{label} {profile} <text>"
+
+campaign:
+  set: "&aSua mensagem de campanha foi definida."
+  too-long: "&cSua mensagem de campanha é longa demais (máximo de &e{max}&c caracteres)."
+  blocked: "&cSua mensagem de campanha contém conteúdo não permitido."
+  empty: "&cUso: &f/{label} {campaign} <message>"
+  header: "&8&m----&r &bCampanha: &f{candidate} &8&m----"
+  body: "&7{message}"
+
+profile:
+  set: "&aSeu perfil de candidato foi definido."
+  too-long: "&cSeu perfil de candidato é longo demais (máximo de &e{max}&c caracteres)."
+  blocked: "&cSeu perfil de candidato contém conteúdo não permitido."
+  empty: "&cUso: &f/{label} {profile} <profile>"
+  none: "&8(nenhum perfil definido)"
+  header: "&8&m----&r &bPerfil: &f{candidate} &8&m----"
+  body: "&7{profile}"
+  usage: "&7Defina-o com &f/{label} {profile} <profile>&7."
+
+party:
+  set: "&aSeu partido político foi definido como &f{party}&a."
+  current: "&7Seu partido político atual é &f{party}&7. Use &f/{label} {party_command} <name>&7 para alterá-lo, ou &f/{label} {party_command} leave&7 para se tornar independente."
+  left: "&aVocê saiu do partido político e agora está em &f{party}&a."
+  renamed: "&aO partido político &f{old}&a foi renomeado para &f{new}&a nesta eleição."
+  no-such-party: "&cNão existe um partido atual chamado &f{old}&c nesta eleição."
+  max-parties: "&cEsta eleição atingiu o número máximo de partidos políticos."
+  standing-header: "&7Partidos políticos em &f{town}&7:"
+  standing-entry: "&7- &f{party} &7({members} membros)"
+  standing-none: "&7Ainda não há partidos políticos concorrendo em &f{town}&7."
+  not-in-party: "&cVocê não está atualmente em um partido."
+  joined-broadcast: "&e{player}&7 agora faz campanha com &f{party}&7 em &f{town}&7."
+  rename-usage: "&cUso: &f/{label} {party} rename <old> <new>"
+  too-long: "&cO nome do seu partido político é longo demais (máximo de &e{max}&c caracteres)."
+  empty: "&cUso: &f/{label} {party} <existing party or new name>"
+  color-set: "&aA cor do seu partido foi definida. Prévia: &r{party}&a."
+  color-invalid: "&cCor inválida &f{color}&c. Use um nome (ex.: red), um código (ex.: &c) ou hexadecimal (&#RRGGBB)."
+  color-needs-party: "&cEntre ou crie um partido primeiro, depois defina sua cor."
+  color-usage: "&cUso: &f/{label} {party} color <colour>&c (nome, &&code ou &#RRGGBB)."
+
+parties:
+  header: "&8&m-----&r &bPartidos da Eleição &8- &f{town} &8&m-----"
+  result-header: "&8&m-----&r &bResultados por Partido &8- &f{town} &8&m-----"
+  none: "&7Nenhum candidato registrou um partido ainda."
+  entry: "&8 - &f{party} &8(&e{votes} votos&8, &b{count} candidato(s)&8) &7{candidates}"
+  entry-hidden: "&8 - &f{party} &8(&b{count} candidato(s)&8) &7{candidates}"
+
+vote:
+  cast: "&aVocê votou em &f{candidate}&a."
+  changed: "&aVocê alterou seu voto para &f{candidate}&a."
+  ballot-cast: "&aSua cédula foi registrada: &f{ballot}&a."
+  ballot-changed: "&aSua cédula foi atualizada: &f{ballot}&a."
+  ballot-cleared: "&eSua cédula foi apagada."
+  nothing-to-clear: "&cVocê ainda não registrou uma cédula."
+  ranked: "&aVocê classificou &f{candidate}&a como preferência &e#{rank}&a. Cédula: &f{ballot}"
+  unranked: "&eVocê removeu &f{candidate}&e da sua cédula. Cédula: &f{ballot}"
+  approved: "&aVocê aprovou &f{candidate}&a. Cédula: &f{ballot}"
+  unapproved: "&eVocê retirou sua aprovação de &f{candidate}&e. Cédula: &f{ballot}"
+  already-voted: "&cVocê já votou. Não é possível alterar o voto."
+  not-open: "&cA votação não está aberta no momento."
+  no-such-candidate: "&cNão há candidato chamado &f{name}&c nesta eleição."
+  cannot-self-vote: "&cVocê não pode votar em si mesmo."
+  usage: "&cUso: &f/{label} {vote} <candidate>"
+  usage-ranked: "&cUso: &f/{label} {vote} <first choice> [second choice] ...&c (classifique os candidatos por preferência)"
+  usage-approval: "&cUso: &f/{label} {vote} <candidate> [candidate] ...&c (aprove cada candidato que você apoia)"
+  not-eligible: "&cSomente residentes de &f{town}&c podem votar nesta eleição."
+  ip-limit-reached: "&cO limite de eleitores por IP desta eleição foi atingido (&e{limit}&c IPs únicos)."
+  reminder: "&eA votação em &f{town}&e termina em &f{time}&e e você ainda não votou! Use &f/{label} {vote} <candidate>&e."
+
+gui:
+  main-title: "&1Central de Eleições &8- &f{town}"
+  roster-title: "&1Lista de Candidatos &8- &f{town} &7({page}/{pages})"
+  standings-title: "&1Partidos &8- &f{town} &7({page}/{pages})"
+  results-title: "&1Resultados da Eleição &8- &f{town} &7({page}/{pages})"
+  phase-none: "&7NENHUMA"
+  vote-none: "&8(nenhum)"
+  status-name: "&bEleição da Cidade"
+  status-lore:
+    - "&7Fase: &f{phase}"
+    - "&7Sistema: &f{system}"
+    - "&7Tempo restante: &f{time}"
+    - "&7Candidatos: &f{candidates}"
+    - "&7Votos registrados: &f{votes}"
+    - "&7Seu voto: &f{your_vote}"
+    - "&7Seu partido: &f{your_party}"
+  main-candidates-name: "&aCédula de Candidatos"
+  main-candidates-lore:
+    - "&7Veja todos os candidatos de &f{town}&7."
+    - "&7Passe o mouse sobre uma cabeça para ler a campanha"
+    - "&7e o perfil do candidato."
+    - "&7Clique nas cabeças durante a votação para votar ou"
+    - "&7montar sua cédula (&f{system}&7)."
+  main-standings-name: "&bPartidos"
+  main-standings-lore:
+    - "&7Veja os grupos partidários e as listas de candidatos."
+    - "&7Os totais de votos seguem a configuração de resultados ao vivo."
+  main-results-name: "&6Últimos Resultados"
+  main-results-lore:
+    - "&7Veja o último resultado de eleição registrado."
+    - "&7Inclui classificação, vencedor e comparecimento."
+  main-run-name: "&eCandidatar-se"
+  main-run-lore:
+    - "&7Entre na disputa pela sua cidade."
+    - "&7Disponível durante as candidaturas."
+  main-withdraw-name: "&cDesistir da Candidatura"
+  main-withdraw-lore:
+    - "&7Saia da disputa atual."
+    - "&7Seus votos serão apagados se você desistir."
+  main-campaign-name: "&fDefinir Mensagem de Campanha"
+  main-campaign-lore:
+    - "&7Atual: &f{your_campaign}"
+    - "&7Clique e digite a nova mensagem no chat."
+  main-profile-name: "&dDefinir Perfil de Candidato"
+  main-profile-lore:
+    - "&7Atual: &f{your_profile}"
+    - "&7Clique e digite seu perfil no chat."
+  main-party-name: "&9Definir Partido"
+  main-party-lore:
+    - "&7Atual: &f{your_party}"
+    - "&7Clique e digite o nome do partido no chat."
+  main-leave-party-name: "&fSair do Partido"
+  main-leave-party-lore:
+    - "&7Volte ao rótulo de partido padrão."
+    - "&7Padrão: &f{default_party}"
+  admin-start-name: "&aIniciar Eleição"
+  admin-start-lore:
+    - "&7Inicie uma nova eleição em &f{town}&7."
+  admin-stop-name: "&cEncerrar Eleição"
+  admin-stop-lore:
+    - "&7Encerre a votação mais cedo e apure os resultados."
+  admin-cancel-name: "&4Cancelar Eleição"
+  admin-cancel-lore:
+    - "&7Cancele a eleição ativa sem vencedor."
+  admin-reload-name: "&eRecarregar Plugin"
+  admin-reload-lore:
+    - "&7Recarregue a configuração, comandos e mensagens."
+  back-name: "&eVoltar à Central de Eleições"
+  back-lore:
+    - "&7Volte ao menu principal."
+  previous-page-name: "&aPágina Anterior"
+  previous-page-lore:
+    - "&7Página &f{page}&7 de &f{pages}&7."
+  next-page-name: "&aPróxima Página"
+  next-page-lore:
+    - "&7Página &f{page}&7 de &f{pages}&7."
+  no-candidates-name: "&cNenhum Candidato"
+  no-candidates-lore:
+    - "&7Nenhum residente entrou nesta eleição ainda."
+  no-parties-name: "&cNenhum Partido"
+  no-parties-lore:
+    - "&7Nenhuma classificação partidária visível está disponível."
+  candidate-name: "&f{candidate} &8[&b{party}&8]"
+  candidate-lore-secret:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&7Os totais de votos ao vivo estão ocultos."
+    - "&aClique para votar em {candidate}."
+  candidate-lore-public:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&7Votos: &f{candidate_votes}"
+    - "&aClique para votar em {candidate}."
+  candidate-lore-closed:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&7A votação não está aberta agora."
+  candidate-lore-ranked:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&aNa sua cédula como preferência &e#{your_rank}&a."
+    - "&7Sua cédula: &f{your_vote}"
+    - "&cClique para removê-lo da sua cédula."
+  candidate-lore-unranked:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&7Sua cédula: &f{your_vote}"
+    - "&aClique para classificar {candidate} como sua próxima preferência."
+  candidate-lore-approved:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&aVocê aprovou {candidate}."
+    - "&7Sua cédula: &f{your_vote}"
+    - "&cClique para retirar sua aprovação."
+  candidate-lore-unapproved:
+    - "&7Campanha: &f{message}"
+    - "&7Perfil: &f{profile}"
+    - "&7Sua cédula: &f{your_vote}"
+    - "&aClique para aprovar {candidate}."
+  party-entry-name: "&b{party}"
+  party-entry-lore-public:
+    - "&7Candidatos: &f{count}"
+    - "&7Votos: &f{party_votes}"
+    - "&7Membros: &f{candidates}"
+  party-entry-lore-hidden:
+    - "&7Candidatos: &f{count}"
+    - "&7Membros: &f{candidates}"
+    - "&7Os totais de votos ficam ocultos até os resultados."
+  results-summary-name: "&6Resumo do Resultado"
+  results-summary-lore:
+    - "&7Vencedor: &f{winner} &8[{winner_party}&8]"
+    - "&7Votos do vencedor: &f{winner_votes}"
+    - "&7Sistema: &f{system}"
+    - "&7Total de votos: &f{total}"
+    - "&7Comparecimento: &f{turnout}% &8({total}/{residents})"
+  clear-ballot-name: "&cApagar Minha Cédula"
+  clear-ballot-lore:
+    - "&7Remova todas as escolhas da sua cédula"
+    - "&7e comece novamente."
+  result-candidate-name: "&f#{rank} {candidate}"
+  result-candidate-lore:
+    - "&7Partido: &f{party}"
+    - "&7Votos: &f{candidate_votes} &8(&7{percent}%&8)"
+  campaign-prompt: "&eDigite sua nova mensagem de campanha no chat &7(máx. {max_campaign} caracteres)&e ou digite &fcancel&e."
+  profile-prompt: "&eDigite seu perfil de candidato no chat &7(máx. {max_profile} caracteres)&e ou digite &fcancel&e."
+  party-prompt: "&eDigite o nome do seu partido no chat &7(máx. {max_party} caracteres)&e ou digite &fcancel&e."
+  input-cancelled: "&7Entrada de texto do menu cancelada."
+
+results:
+  header: "&8&m-----&r &bResultados da Eleição &8- &f{town} &8&m-----"
+  voting-system: "&7Sistema de votação: &f{system}"
+  line: "&7 {rank}. &f{candidate} &8[{party}] &8- &e{votes}&7 voto(s) &8(&7{percent}%&8)"
+  round-header: "&8&m--&r &6Segundo Turno {round} &8&m--"
+  round-line: "&8   - &f{candidate}&7: &e{votes}&7 voto(s)"
+  round-eliminated: "&8   &cEliminados: &f{candidates}"
+  round-exhausted: "&8   &7Cédulas esgotadas: &f{count}"
+  winner: "&a&lVencedor: &f{winner} &8[{party}]&a com &e{votes}&a voto(s)!"
+  no-winner: "&cNenhum vencedor foi declarado."
+  total-votes: "&7Total de votos: &f{total}"
+  leading-party: "&6Partido líder: &f{party}&6 com &e{votes}&6 voto(s)."
+  turnout: "&7Comparecimento: &f{voters}&7/&f{residents} &7residentes (&f{percent}%&7)"
+  none-recorded: "&cNenhum resultado anterior de eleição está registrado para esta cidade."
+  tie-runoff: "&6Houve empate. Um segundo turno começou entre: &f{candidates}"
+
+winner:
+  made-mayor: "&a{winner} foi nomeado prefeito de {town}."
+  made-king: "&a{winner} foi coroado líder de {town}."
+  ranks-granted: "&a{winner} recebeu o(s) cargo(s): &f{ranks}&a."
+  announce-town: "&6&l{winner}&e do partido &f{party}&e venceu a eleição e agora lidera &f{town}&e!"
+  announce-server: "&6&l{winner}&e do partido &f{party}&e foi eleito em &f{town}&e!"
+
+status:
+  header: "&8&m-----&r &bStatus da Eleição &8- &f{town} &8&m-----"
+  phase: "&7Fase: &f{phase}"
+  voting-system: "&7Sistema de votação: &f{system}"
+  candidates-count: "&7Candidatos: &f{count}"
+  votes-count: "&7Votos registrados: &f{votes}"
+  your-vote: "&7Seu voto: &f{choice} &8[{party}]"
+  your-ballot: "&7Sua cédula: &f{ballot}"
+  your-vote-none: "&7Seu voto: &8(nenhum)"
+  candidate-list-header: "&7Candidatos (use &f/{label} {vote} <name>&7):"
+  candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votos&8) &7{message} &8| &7{profile}"
+  candidate-entry-hidden: "&8 - &f{candidate} &8[{party}] &7{message} &8| &7{profile}"
+
+admin:
+  started: "&aVocê iniciou uma eleição em &f{town}&a."
+  stopped: "&aVocê encerrou a votação mais cedo em &f{town}&a; os resultados estão sendo apurados."
+  cancelled: "&aVocê cancelou a eleição em &f{town}&a."
+  no-active-to-stop: "&cNão há uma eleição ativa para encerrar em &f{town}&c."
+  town-not-found: "&cNenhuma cidade chamada &f{town}&c foi encontrada."
+  nation-not-found: "&cNenhuma nação chamada &f{nation}&c foi encontrada."
+
+help:
+  header: "&8&m-----&r &bAjuda do TownyElections &8&m-----"
+  run: "&f/{label} {run} &8- &7Candidate-se."
+  withdraw: "&f/{label} {withdraw} &8- &7Desista da disputa."
+  campaign: "&f/{label} {campaign} <message> &8- &7Defina sua mensagem de campanha."
+  profile: "&f/{label} {profile} <profile> &8- &7Defina seu perfil de candidato."
+  party: "&f/{label} {party} <name> &8- &7Entre ou crie um partido político."
+  party-color: "&f/{label} {party} color <colour> &8- &7Defina a cor do seu partido."
+  parties: "&f/{label} {parties} &8- &7Liste os partidos e classificações atuais."
+  vote: "&f/{label} {vote} <candidate...> &8- &7Vote (liste vários nomes para classificá-los ou aprová-los)."
+  status: "&f/{label} {status} &8- &7Veja a eleição atual."
+  candidates: "&f/{label} {candidates} &8- &7Liste os candidatos."
+  results: "&f/{label} {results} &8- &7Veja os últimos resultados."
+  nation: "&f/{label} {nation} <sub-command> &8- &7Execute qualquer comando para sua nação (ex.: {nation} {vote})."
+  start: "&f/{label} {start} [town] &8- &7(Admin) Inicie uma eleição."
+  stop: "&f/{label} {stop} [town] &8- &7(Admin) Encerre a votação e faça a apuração."
+  cancel: "&f/{label} {cancel} [town] &8- &7(Admin) Cancele a eleição."
+  reload: "&f/{label} {reload} &8- &7(Admin) Recarregue a configuração."
