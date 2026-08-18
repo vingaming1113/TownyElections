@@ -7,7 +7,6 @@ enum ElectionMenuAction {
     RUN,
     WITHDRAW,
     SET_CAMPAIGN,
-    SET_PROFILE,
     SET_PARTY,
     LEAVE_PARTY,
     CLEAR_BALLOT,
