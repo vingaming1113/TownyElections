@@ -70,7 +70,7 @@
         </dependency>
 
         <!-- Gson: bundled with the Minecraft server / Paper at runtime, so this
-             is provided (not shaded). Used to parse the Modrinth update API. -->
+             is provided (not shaded). Used to parse the GitHub Releases API. -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
