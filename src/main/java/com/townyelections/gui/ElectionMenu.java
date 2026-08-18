@@ -767,7 +767,7 @@ public class ElectionMenu implements Listener {
         ItemStack gray = filler(Material.GRAY_STAINED_GLASS_PANE);
         ItemStack blue = filler(Material.CYAN_STAINED_GLASS_PANE);
         for (int slot = 0; slot < inventory.getSize(); slot++) {
-            if (isFrameSlot(slot)) {
+            if (isFrameSlot(slot, inventory.getSize())) {
                 inventory.setItem(slot, slot % 2 == 0 ? blue : gray);
             }
         }
@@ -783,8 +783,8 @@ public class ElectionMenu implements Listener {
         return item;
     }
 
-    private boolean isFrameSlot(int slot) {
-        return slot < 9 || slot % 9 == 0 || slot % 9 == 8 || slot >= 45;
+    private boolean isFrameSlot(int slot, int inventorySize) {
+        return slot < 9 || slot % 9 == 0 || slot % 9 == 8 || slot >= inventorySize - 9;
     }
 
     private Map<String, String> placeholders(Town town, Election election) {
