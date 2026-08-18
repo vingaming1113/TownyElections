@@ -15,12 +15,12 @@ import java.time.Duration;
 import java.util.Locale;
 
 /**
- * Checks Modrinth for a newer <em>release</em> version of the plugin.
+ * Checks GitHub Releases for a newer stable version of the plugin.
  *
- * <p>Only versions with a {@code release} version type are considered; beta and
- * alpha releases are ignored. The check runs asynchronously and never blocks the
- * main thread. Results are cached so join notifications and console logging can
- * read them cheaply.
+ * <p>Only published releases with a {@code tag_name} are considered; draft,
+ * prerelease, and nightly releases are ignored. The check runs asynchronously
+ * and never blocks the main thread. Results are cached so join notifications and
+ * console logging can read them cheaply.
  */
 public class UpdateChecker {
 
@@ -55,7 +55,7 @@ public class UpdateChecker {
         return downloadUrl;
     }
 
-    /** Run the Modrinth check off the main thread. */
+    /** Run the GitHub Releases check off the main thread. */
     public void checkAsync() {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, this::check);
     }
@@ -107,7 +107,7 @@ public class UpdateChecker {
         }
     }
 
-    /** Parse the Modrinth version list and return the highest release version number, or null. */
+    /** Parse GitHub Releases and return the highest stable tag, or null. */
     private String newestReleaseVersion(String body) {
         JsonElement root = JsonParser.parseString(body);
         if (!root.isJsonArray()) {
