@@ -894,7 +894,6 @@ public class ElectionMenu implements Listener {
 
     private enum PendingInputType {
         CAMPAIGN,
-        PROFILE,
         PARTY
     }
 
