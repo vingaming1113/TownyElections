@@ -9,7 +9,6 @@ general:
   players-only: "&cThis command can only be used by players."
   not-a-resident: "&cYou are not a registered Towny resident."
   no-town: "&cYou must belong to a town to do that."
-  no-nation: "&cYou must belong to a nation to do that."
   reloaded: "&aConfiguration reloaded successfully."
   unknown-command: "&cUnknown sub-command. Use &f/{label} {help}&c."
   invalid-number: "&cThat is not a valid number."
@@ -33,9 +32,6 @@ election:
   system-ranked-choice: "&fRanked Choice"
   system-approval: "&fApproval"
 
-nation:
-  disabled: "&cNation elections are disabled on this server."
-
 update:
   available: "&fA new release is available: &av{latest}&f (you have &7v{current}&f). Download: &b{url}"
 
@@ -54,7 +50,6 @@ candidate:
   recommend-campaign: "&8 • &fSet a campaign message: &7/{label} {campaign} <message>"
   recommend-party: "&8 • &fJoin or create a party: &7/{label} {party} <name>"
   recommend-color: "&8 • &fColour your party: &7/{label} {party} color <colour>"
-  recommend-profile: "&8 • &fWrite a candidate profile: &7/{label} {profile} <text>"
 
 campaign:
   set: "&aYour campaign message has been set."
@@ -63,16 +58,6 @@ campaign:
   empty: "&cUsage: &f/{label} {campaign} <message>"
   header: "&8&m----&r &bCampaign: &f{candidate} &8&m----"
   body: "&7{message}"
-
-profile:
-  set: "&aYour candidate profile has been set."
-  too-long: "&cYour candidate profile is too long (max &e{max}&c characters)."
-  blocked: "&cYour candidate profile contains disallowed content."
-  empty: "&cUsage: &f/{label} {profile} <profile>"
-  none: "&8(no profile set)"
-  header: "&8&m----&r &bProfile: &f{candidate} &8&m----"
-  body: "&7{profile}"
-  usage: "&7Set it with &f/{label} {profile} <profile>&7."
 
 party:
   set: "&aYour political party has been set to &f{party}&a."
@@ -144,7 +129,7 @@ gui:
   main-candidates-lore:
     - "&7View every candidate for &f{town}&7."
     - "&7Hover a head to read their campaign"
-    - "&7message and profile."
+    - "&7message."
     - "&7Click heads during voting to cast or"
     - "&7build your ballot (&f{system}&7)."
   main-standings-name: "&bParty Standings"
@@ -167,10 +152,6 @@ gui:
   main-campaign-lore:
     - "&7Current: &f{your_campaign}"
     - "&7Click, then type the new message in chat."
-  main-profile-name: "&dSet Candidate Profile"
-  main-profile-lore:
-    - "&7Current: &f{your_profile}"
-    - "&7Click, then type your profile in chat."
   main-party-name: "&9Set Party"
   main-party-lore:
     - "&7Current: &f{your_party}"
@@ -209,38 +190,31 @@ gui:
   candidate-name: "&f{candidate} &8[&b{party}&8]"
   candidate-lore-secret:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&7Live vote totals are hidden."
     - "&aClick to vote for {candidate}."
   candidate-lore-public:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&7Votes: &f{candidate_votes}"
     - "&aClick to vote for {candidate}."
   candidate-lore-closed:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&7Voting is not open right now."
   candidate-lore-ranked:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&aOn your ballot as preference &e#{your_rank}&a."
     - "&7Your ballot: &f{your_vote}"
     - "&cClick to remove them from your ballot."
   candidate-lore-unranked:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&7Your ballot: &f{your_vote}"
     - "&aClick to rank {candidate} as your next preference."
   candidate-lore-approved:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&aYou have approved {candidate}."
     - "&7Your ballot: &f{your_vote}"
     - "&cClick to withdraw your approval."
   candidate-lore-unapproved:
     - "&7Campaign: &f{message}"
-    - "&7Profile: &f{profile}"
     - "&7Your ballot: &f{your_vote}"
     - "&aClick to approve {candidate}."
   party-entry-name: "&b{party}"
@@ -268,7 +242,6 @@ gui:
     - "&7Party: &f{party}"
     - "&7Votes: &f{candidate_votes} &8(&7{percent}%&8)"
   campaign-prompt: "&eType your new campaign message in chat &7(max {max_campaign} chars)&e, or type &fcancel&e."
-  profile-prompt: "&eType your candidate profile in chat &7(max {max_profile} chars)&e, or type &fcancel&e."
   party-prompt: "&eType your party name in chat &7(max {max_party} chars)&e, or type &fcancel&e."
   input-cancelled: "&7Cancelled menu text input."
 
@@ -305,8 +278,8 @@ status:
   your-ballot: "&7Your ballot: &f{ballot}"
   your-vote-none: "&7Your vote: &8(none)"
   candidate-list-header: "&7Candidates (use &f/{label} {vote} <name>&7):"
-  candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message} &8| &7{profile}"
-  candidate-entry-hidden: "&8 - &f{candidate} &8[{party}] &7{message} &8| &7{profile}"
+  candidate-entry: "&8 - &f{candidate} &8[{party}] &8(&e{votes} votes&8) &7{message}"
+  candidate-entry-hidden: "&8 - &f{candidate} &8[{party}] &7{message}"
 
 admin:
   started: "&aYou started an election in &f{town}&a."
@@ -314,14 +287,12 @@ admin:
   cancelled: "&aYou cancelled the election in &f{town}&a."
   no-active-to-stop: "&cThere is no active election to stop in &f{town}&c."
   town-not-found: "&cNo town named &f{town}&c was found."
-  nation-not-found: "&cNo nation named &f{nation}&c was found."
 
 help:
   header: "&8&m-----&r &bTownyElections Help &8&m-----"
   run: "&f/{label} {run} &8- &7Stand as a candidate."
   withdraw: "&f/{label} {withdraw} &8- &7Withdraw from the race."
   campaign: "&f/{label} {campaign} <message> &8- &7Set your campaign message."
-  profile: "&f/{label} {profile} <profile> &8- &7Set your candidate profile."
   party: "&f/{label} {party} <name> &8- &7Join or create a political party."
   party-color: "&f/{label} {party} color <colour> &8- &7Set your party's colour."
   parties: "&f/{label} {parties} &8- &7List current parties and standings."
@@ -329,7 +300,6 @@ help:
   status: "&f/{label} {status} &8- &7View the current election."
   candidates: "&f/{label} {candidates} &8- &7List candidates."
   results: "&f/{label} {results} &8- &7View the last results."
-  nation: "&f/{label} {nation} <sub-command> &8- &7Run any command for your nation (e.g. {nation} {vote})."
   start: "&f/{label} {start} [town] &8- &7(Admin) Start an election."
   stop: "&f/{label} {stop} [town] &8- &7(Admin) End voting & tally."
   cancel: "&f/{label} {cancel} [town] &8- &7(Admin) Cancel the election."
