@@ -638,7 +638,6 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
                 "run", commands.literal(CommandConfig.RUN),
                 "withdraw", commands.literal(CommandConfig.WITHDRAW),
                 "campaign", commands.literal(CommandConfig.CAMPAIGN),
-                "profile", commands.literal(CommandConfig.PROFILE),
                 "party", commands.literal(CommandConfig.PARTY),
                 "parties", commands.literal(CommandConfig.PARTIES),
                 "vote", commands.literal(CommandConfig.VOTE),
@@ -654,7 +653,6 @@ public class ElectionCommand implements CommandExecutor, TabCompleter {
         messages.sendNoPrefix(sender, "help.run", base);
         messages.sendNoPrefix(sender, "help.withdraw", base);
         messages.sendNoPrefix(sender, "help.campaign", base);
-        messages.sendNoPrefix(sender, "help.profile", base);
         messages.sendNoPrefix(sender, "help.party", base);
         messages.sendNoPrefix(sender, "help.parties", base);
         messages.sendNoPrefix(sender, "help.vote", base);
