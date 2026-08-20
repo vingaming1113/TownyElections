@@ -127,8 +127,8 @@ gui:
   main-candidates-name: "&aBulletin des candidats"
   main-candidates-lore:
     - "&7Voir tous les candidats de &f{town}&7."
-    - "&7Survolez une tête pour lire sa campagne"
-    - "&7et son message."
+    - "&7Survolez une tête pour lire son message"
+    - "&7de campagne."
     - "&7Cliquez sur les têtes pendant le vote pour voter ou"
     - "&7créer votre bulletin (&f{system}&7)."
   main-standings-name: "&bClassement des partis"
