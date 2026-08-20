@@ -1,6 +1,5 @@
 package com.townyelections.integration;
 
-import com.palmergames.bukkit.towny.object.Nation;
 import com.palmergames.bukkit.towny.object.Resident;
 import com.palmergames.bukkit.towny.object.Town;
 import com.townyelections.TownyElections;
@@ -33,9 +32,6 @@ import java.util.UUID;
  *   <li>%townyelections_last_winner_party% - party of the last winner in their town</li>
  * </ul>
  *
- * <p>Every placeholder above also has a {@code nation_} variant (e.g.
- * {@code %townyelections_nation_phase%}) that resolves against the player's
- * nation election instead of their town election.
  */
 public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
 
@@ -73,19 +69,9 @@ public class ElectionsPlaceholderExpansion extends PlaceholderExpansion {
         Resident resident = plugin.getTownyHook().getResident(player.getUniqueId());
 
         String key = params.toLowerCase();
-        Election election;
-        ElectionResult lastResult;
-        if (key.startsWith("nation_")) {
-            key = key.substring("nation_".length());
-            Nation nation = (resident != null && resident.hasNation()) ? resident.getNationOrNull() : null;
-            election = nation == null ? null : plugin.getElectionManager().getElection(nation.getUUID());
-            lastResult = nation == null ? null
-                    : plugin.getElectionManager().getLastResult(nation.getUUID());
-        } else {
-            Town town = (resident != null && resident.hasTown()) ? resident.getTownOrNull() : null;
-            election = town == null ? null : plugin.getElectionManager().getElection(town);
-            lastResult = town == null ? null : plugin.getElectionManager().getLastResult(town.getUUID());
-        }
+        Town town = (resident != null && resident.hasTown()) ? resident.getTownOrNull() : null;
+        Election election = town == null ? null : plugin.getElectionManager().getElection(town);
+        ElectionResult lastResult = town == null ? null : plugin.getElectionManager().getLastResult(town.getUUID());
 
         switch (key) {
             case "phase":

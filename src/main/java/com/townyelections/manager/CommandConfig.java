@@ -18,7 +18,6 @@ public class CommandConfig {
     public static final String RUN = "run";
     public static final String WITHDRAW = "withdraw";
     public static final String CAMPAIGN = "campaign";
-    public static final String PROFILE = "profile";
     public static final String PARTY = "party";
     public static final String PARTIES = "parties";
     public static final String VOTE = "vote";
@@ -30,12 +29,10 @@ public class CommandConfig {
     public static final String CANCEL = "cancel";
     public static final String RELOAD = "reload";
     public static final String HELP = "help";
-    /** Prefix that switches a sub-command to operate on the player's nation. */
-    public static final String NATION = "nation";
 
     private static final String[] ACTIONS = {
-            RUN, WITHDRAW, CAMPAIGN, PROFILE, PARTY, PARTIES, VOTE, STATUS, CANDIDATES,
-            RESULTS, START, STOP, CANCEL, RELOAD, HELP, NATION
+            RUN, WITHDRAW, CAMPAIGN, PARTY, PARTIES, VOTE, STATUS, CANDIDATES,
+            RESULTS, START, STOP, CANCEL, RELOAD, HELP
     };
 
     private final TownyElections plugin;
