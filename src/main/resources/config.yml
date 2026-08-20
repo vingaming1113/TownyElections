@@ -66,10 +66,10 @@ election:
 
   # If true, residents can see live vote tallies during voting. If false, tallies
   # are hidden until the election concludes (secret ballot).
-  public-live-results: false
+  public-live-results: true
 
   # May candidates vote for themselves?
-  allow-self-vote: true
+  allow-self-vote: false
 
   # Electoral system used to collect and count ballots:
   #   PLURALITY      - each voter picks one candidate; the most votes wins
@@ -90,7 +90,7 @@ election:
   #   INCUMBENT      - the current mayor wins if tied, else RANDOM
   #   RUNOFF         - start a new short voting round between the tied candidates
   #   NONE           - declare no winner (election voided)
-  tie-breaker: "INCUMBENT"
+  tie-breaker: "RUNOFF"
 
   # Duration of a runoff voting round (only used when tie-breaker is RUNOFF).
   runoff-duration: "1d"
@@ -107,9 +107,9 @@ election:
   # economy). Purely optional flavour.
   economy:
     # Cost for a resident to register as a candidate. 0 = free.
-    candidacy-cost: 0.0
+    candidacy-cost: 10.0
     # Reward paid to the winner from nowhere (0 = disabled).
-    winner-reward: 0.0
+    winner-reward: 500.0
 
   # Per-IP vote limit to prevent alt abuse. When enabled, one account per
   # fingerprint can obtain a ballot, up to the configured number of fingerprints.
@@ -123,34 +123,11 @@ election:
     max-votes: 0
 
 # ----------------------------------------------------------------------------
-#  Nation elections
-# ----------------------------------------------------------------------------
-# In addition to per-town elections, TownyElections can run nation-wide
-# elections. Every resident of every town in the nation may stand and vote.
-# Players use the same sub-commands prefixed with the "nation" literal, e.g.
-# /election nation run, /election nation vote <candidate>, /election nation start.
-# Nation elections reuse the durations, voting system, tie-breaker and campaign
-# settings above; only the options below are nation-specific.
-nation:
-  # Master switch for nation elections and the "/election nation" sub-command.
-  enabled: true
-  # Minimum residents a nation must have before a nation election may run.
-  min-residents: 3
-  # Also auto-start nation elections on the same cadence as town elections
-  # (see election.auto-schedule). Left off by default so nation elections are
-  # opt-in and started manually with /election nation start.
-  auto-schedule: false
-
-# ----------------------------------------------------------------------------
 #  Campaign settings
 # ----------------------------------------------------------------------------
 campaign:
   # Maximum length (characters) of a candidate's campaign message.
   max-message-length: 128
-  # Maximum length (characters) of a candidate's profile/bio.
-  # Profiles are longer than campaign messages and are shown in candidate lists
-  # and the election GUI so voters can learn what a candidate is about.
-  max-profile-length: 256
   # Default campaign message used when a candidate sets none.
   default-message: "I would be honored to serve this town."
   # Maximum length (characters) of a party name typed with /election party.
@@ -186,27 +163,17 @@ campaign:
 # and custom ranks you define). Invalid ranks are skipped with a console warning.
 winner:
   # Make the winning candidate the town's Mayor. This transfers mayorship.
-  set-as-mayor: false
-
-  # Make the winner of a *nation* election the nation's King (leader). This
-  # transfers kingship. Only applies to nation elections.
-  set-as-king: false
+  set-as-mayor: true
 
   # Towny town ranks to grant the winner of a *town* election. These map to
   # permission nodes defined in Towny's townyperms.yml (e.g. plot management).
   grant-town-ranks:
-    - "councillor"
-    - "helper"
-
-  # Towny nation ranks to grant the winner of a *nation* election. These must be
-  # valid nation ranks defined in Towny's townyperms.yml. Invalid ranks are
-  # skipped with a console warning. Leave empty to grant no ranks.
-  grant-nation-ranks: []
+    - "assistant"
 
   # If true, ranks granted by a previous election win are removed from the
   # outgoing office holder(s) when a new winner takes office. Applies to town
   # ranks for town elections and nation ranks for nation elections.
-  revoke-previous-winner-ranks: true
+  revoke-previous-winner-ranks: false
 
   # Extra vanilla/Bukkit console commands to run when a winner is decided.
   # Placeholders: {winner} {winner_uuid} {winner_party} {party} {town} {votes} {total_votes}
