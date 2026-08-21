@@ -2,7 +2,7 @@
 # Supports legacy '&' colour codes and hex '&#RRGGBB'.
 # Available placeholders vary per message; common ones are shown inline.
 
-prefix: "&8[&bWahlen&8]&r "
+prefix: "&8[&bTownyElections&8]&r "
 
 general:
   no-permission: "&cDu hast keine Berechtigung dafür."

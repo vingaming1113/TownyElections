@@ -2,7 +2,7 @@
 # Admite códigos de color '&' heredados y '&#RRGGBB' hexadecimales.
 # Los marcadores disponibles varían según el mensaje; los más comunes aparecen en línea.
 
-prefix: "&8[&bElecciones&8]&r "
+prefix: "&8[&bTownyElections&8]&r "
 
 general:
   no-permission: "&cNo tienes permiso para hacer eso."
