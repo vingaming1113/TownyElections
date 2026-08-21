@@ -2,7 +2,7 @@
 # Prend en charge les codes de couleur '&' et hexadécimaux '&#RRGGBB'.
 # Les variables disponibles varient selon le message ; les principales sont indiquées.
 
-prefix: "&8[&bÉlections&8]&r "
+prefix: "&8[&bTownyÉlections&8]&r "
 
 general:
   no-permission: "&cVous n'avez pas la permission de faire cela."
