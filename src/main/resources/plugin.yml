@@ -28,6 +28,13 @@ permissions:
       townyelections.vote: true
       townyelections.info: true
       townyelections.admin: true
+    townyelections.player:
+    description: Default player permissions
+    default: default
+    children:
+      townyelections.candidate: true
+      townyelections.vote: true
+      townyelections.info: true
   townyelections.candidate:
     description: Allows a resident to run for election and manage their campaign.
     default: true
