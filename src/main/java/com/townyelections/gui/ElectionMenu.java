@@ -29,6 +29,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -72,6 +73,26 @@ public class ElectionMenu implements Listener {
         this.config = plugin.getConfigManager();
         this.commands = plugin.getCommandConfig();
         this.towny = plugin.getTownyHook();
+    }
+
+    /**
+     * Close menus left open by a previous plugin instance after a hot reload.
+     * Their holders come from an old classloader, so this instance's click
+     * listener cannot serve them; leaving them open would leave dead buttons.
+     */
+    public void closeStaleViews() {
+        String expected = ElectionMenuHolder.class.getName();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            InventoryHolder holder = player.getOpenInventory().getTopInventory().getHolder();
+            if (holder == null || holder instanceof ElectionMenuHolder) {
+                continue;
+            }
+            if (holder.getClass().getName().equals(expected)) {
+                player.closeInventory();
+                messages.send(player, "gui.stale-menu-closed",
+                        MessageManager.placeholders("label", "election"));
+            }
+        }
     }
 
     public void openMain(Player player) {
