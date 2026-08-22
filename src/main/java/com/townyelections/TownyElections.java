@@ -76,6 +76,7 @@ public class TownyElections extends JavaPlugin {
         // Listeners.
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
         Bukkit.getPluginManager().registerEvents(electionMenu, this);
+        electionMenu.closeStaleViews();
 
         // State-machine tick: every 20 ticks (~1 second) is plenty for durations
         // measured in minutes/days and keeps timing responsive for admins.
