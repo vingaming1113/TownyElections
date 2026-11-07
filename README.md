@@ -1,3 +1,7 @@
+
+> [!WARNING]  
+> I'll no longer be working on this.
+
 # TownyElections
 
 [![Build](https://github.com/vingaming1113/TownyElections/actions/workflows/build.yml/badge.svg)](https://github.com/vingaming1113/TownyElections/actions/workflows/build.yml)
