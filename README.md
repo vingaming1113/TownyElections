@@ -1,6 +1,6 @@
 
 > [!WARNING]  
-> I'll no longer be working on this.
+> I'll no longer be working on this. Feel free to make any forks/continuations.
 
 # TownyElections
 
